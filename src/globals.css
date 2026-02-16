@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 97.6%; /* #f9f9f9 */
+    --foreground: 0 0% 0%; /* #000000 */
+
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 0 0% 0%; /* #000000 */
+
+    --popover: 0 0% 100%; /* #ffffff */
+    --popover-foreground: 0 0% 0%; /* #000000 */
+
+    --primary: 0 0% 0%; /* #000000 */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+
+    --secondary: 78 100% 50%; /* #B3FD00 */
+    --secondary-foreground: 0 0% 0%; /* #000000 */
+
+    --accent: 78 100% 50%; /* #B3FD00 */
+    --accent-foreground: 0 0% 0%; /* #000000 */
+
+    --muted: 0 0% 90.2%; /* #e6e6e6 */
+    --muted-foreground: 0 0% 50.2%; /* #808080 */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90.2%; /* #e6e6e6 */
+    --input: 0 0% 90.2%; /* #e6e6e6 */
+    --ring: 0 0% 0%; /* #000000 */
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 50.2%;
+    --sidebar-primary: 0 0% 0%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 90.2%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 90.2%;
+    --sidebar-ring: 0 0% 0%;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 78 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50.2%;
+
+    --accent: 78 100% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 10%;
+    --input: 0 0% 10%;
+    --ring: 0 0% 100%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 90.2%;
+    --sidebar-primary: 78 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 90.2%;
+    --sidebar-border: 0 0% 10%;
+    --sidebar-ring: 78 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    background-color: #f9f9f9;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: #000000;
+  }
+
+  p {
+    color: #808080;
+  }
+}
+
+/* Custom color classes */
+.text-primary-black {
+  color: #000000;
+}
+
+.text-secondary-green {
+  color: #B3FD00;
+}
+
+.text-detail-gray {
+  color: #808080;
+}
+
+.text-detail-light {
+  color: #e6e6e6;
+}
+
+.bg-primary-black {
+  background-color: #000000;
+}
+
+.bg-secondary-green {
+  background-color: #B3FD00;
+}
+
+.bg-detail-gray {
+  background-color: #808080;
+}
+
+.bg-detail-light {
+  background-color: #e6e6e6;
+}
+
+.bg-tertiary-white {
+  background-color: #ffffff;
+}
+
+.border-detail-light {
+  border-color: #e6e6e6;
+}
+
+.hover\:bg-secondary-green:hover {
+  background-color: #B3FD00;
+}
+
+.hover\:text-primary-black:hover {
+  color: #000000;
+}
