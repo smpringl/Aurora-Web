@@ -22,8 +22,12 @@ const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutPr
     onTabChange(tab)
   }
 
-  const handleSignOut = async () => {
-    await signOut()
+  const handleSignOut = () => {
+    // Fire and forget — don't await, redirect immediately
+    signOut().catch(() => {})
+    // Clear local storage as fallback and redirect
+    localStorage.removeItem('sb-kfuuqxmaihlwhzfibhvj-auth-token')
+    window.location.href = '/auth?mode=signin'
   }
 
   return (

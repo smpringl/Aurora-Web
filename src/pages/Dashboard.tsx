@@ -9,10 +9,32 @@ import Usage from '@/components/Usage'
 import AccountSettings from '@/components/AccountSettings'
 import ApiKeyManagement from '@/components/ApiKeyManagement'
 
+type Tab = 'overview' | 'playground' | 'activity-logs' | 'usage' | 'api-key' | 'settings'
+
+const VALID_TABS: Tab[] = ['overview', 'playground', 'activity-logs', 'usage', 'api-key', 'settings']
+
+function getTabFromHash(): Tab {
+  const hash = window.location.hash.replace('#', '')
+  return VALID_TABS.includes(hash as Tab) ? (hash as Tab) : 'overview'
+}
+
 const Dashboard = () => {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'overview' | 'playground' | 'activity-logs' | 'usage' | 'api-key' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<Tab>(getTabFromHash)
+
+  // Sync tab to URL hash
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab)
+    window.location.hash = tab
+  }
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(getTabFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -26,6 +48,15 @@ const Dashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-black mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
+          <button
+            onClick={() => {
+              localStorage.removeItem('sb-kfuuqxmaihlwhzfibhvj-auth-token')
+              window.location.href = '/auth?mode=signin'
+            }}
+            className="mt-6 text-sm text-detail-gray hover:text-primary-black underline"
+          >
+            Sign out
+          </button>
         </div>
       </div>
     )
@@ -36,7 +67,7 @@ const Dashboard = () => {
   }
 
   return (
-    <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <DashboardLayout activeTab={activeTab} onTabChange={handleTabChange}>
       {activeTab === 'overview' && <Overview />}
       {activeTab === 'playground' && <Playground />}
       {activeTab === 'activity-logs' && <ActivityLogs />}
