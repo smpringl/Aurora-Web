@@ -35,7 +35,6 @@ const Playground = () => {
   const startRef = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
-  // Fetch the user's API key from Supabase — depend on user.id (stable string)
   const userId = user?.id
   useEffect(() => {
     if (!userId) {
@@ -55,7 +54,6 @@ const Playground = () => {
       .catch(() => setKeyLoading(false))
   }, [userId])
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -72,7 +70,6 @@ const Playground = () => {
 
     if (!trimmedDomain) return
 
-    // Cancel any in-flight request
     if (controllerRef.current) controllerRef.current.abort()
     controllerRef.current = new AbortController()
 
@@ -138,29 +135,25 @@ const Playground = () => {
     <div className="space-y-0">
       {/* Header */}
       <div className="pb-8">
-        <h1 className="text-4xl font-heading font-bold text-primary-black leading-tight">
+        <h1 className="text-[36px] font-semibold tracking-[-0.02em] leading-[1.2] text-gray-900">
           Playground
         </h1>
-        <p className="text-detail-gray font-sans mt-1">
+        <p className="text-gray-500 mt-1 text-[15px]">
           Test the Aurora GHG API with a company domain
         </p>
       </div>
 
       {/* No API key state */}
       {!keyLoading && !apiKey && (
-        <div className="bg-white rounded-xl border border-detail-light p-6 mb-4">
+        <div className="border border-gray-200 rounded-xl p-6 mb-4 bg-white">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+            <AlertCircle className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-sans font-medium text-primary-black">
-                No API key found
-              </p>
-              <p className="text-sm font-sans text-detail-gray mt-1">
+              <p className="text-sm font-medium text-gray-900">No API key found</p>
+              <p className="text-sm text-gray-500 mt-1">
                 Create an API key in the <button
-                  onClick={() => {
-                    window.location.hash = 'api-key'
-                  }}
-                  className="text-primary-black underline hover:no-underline"
+                  onClick={() => { window.location.hash = 'api-key' }}
+                  className="text-black underline hover:no-underline"
                 >API Key</button> tab to use the Playground.
               </p>
             </div>
@@ -169,10 +162,10 @@ const Playground = () => {
       )}
 
       {/* Query section */}
-      <div className="bg-white rounded-xl border border-detail-light p-6">
+      <div className="border border-gray-200 rounded-xl p-6 bg-white">
         <div className="flex items-center gap-2 mb-3">
-          <Globe className="w-4 h-4 text-detail-gray" />
-          <span className="text-sm font-sans font-medium text-primary-black">
+          <Globe className="w-4 h-4 text-gray-400" />
+          <span className="text-[13px] font-medium text-gray-900">
             POST /v1/ghg/latest
           </span>
         </div>
@@ -183,14 +176,14 @@ const Playground = () => {
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit) handleSubmit() }}
-            className="flex-1 font-sans text-sm bg-white border-detail-light"
+            className="flex-1 text-[13px] bg-white border-gray-200 rounded-lg"
             disabled={loading || !apiKey}
           />
           {loading ? (
             <Button
               onClick={handleCancel}
               variant="outline"
-              className="shrink-0 border-detail-light hover:bg-gray-50"
+              className="shrink-0 border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg"
             >
               Cancel
             </Button>
@@ -198,7 +191,7 @@ const Playground = () => {
             <Button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="shrink-0 bg-primary-black text-white hover:bg-gray-800 disabled:opacity-40"
+              className="shrink-0 bg-black text-white hover:bg-gray-800 disabled:opacity-40 rounded-full px-6"
             >
               <Play className="w-4 h-4 mr-2" />
               Run
@@ -208,10 +201,10 @@ const Playground = () => {
 
         {/* Loading state */}
         {loading && (
-          <div className="mt-6 flex items-center gap-3 text-sm text-detail-gray font-sans">
-            <Loader2 className="w-4 h-4 animate-spin" />
+          <div className="mt-6 flex items-center gap-3 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin text-black" />
             <span>Querying emissions data...</span>
-            <span className="flex items-center gap-1 font-mono text-xs">
+            <span className="flex items-center gap-1 font-mono text-xs text-gray-400">
               <Clock className="w-3 h-3" />
               {formatElapsed(elapsedMs)}
             </span>
@@ -223,19 +216,17 @@ const Playground = () => {
           <div className="mt-6">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <span className={`text-xs font-sans font-medium px-2 py-0.5 rounded-full ${
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                   response.status === 'ok'
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-amber-50 text-amber-700'
+                    ? 'bg-black text-white'
+                    : 'bg-gray-200 text-gray-600'
                 }`}>
                   {response.status === 'ok' ? 'SUCCESS' : 'NOT AVAILABLE'}
                 </span>
                 {response.methodology && (
-                  <span className="text-xs font-sans text-detail-gray">
-                    {response.methodology}
-                  </span>
+                  <span className="text-xs text-gray-400">{response.methodology}</span>
                 )}
-                <span className="text-xs font-mono text-detail-gray flex items-center gap-1">
+                <span className="text-xs font-mono text-gray-400 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {formatElapsed(elapsedMs)}
                 </span>
@@ -243,14 +234,14 @@ const Playground = () => {
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => { window.location.hash = 'activity-logs' }}
-                  className="flex items-center gap-1.5 text-xs font-sans text-detail-gray hover:text-primary-black transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-black transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   View in logs
                 </button>
                 <button
                   onClick={handleCopy}
-                  className="flex items-center gap-1.5 text-xs font-sans text-detail-gray hover:text-primary-black transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-black transition-colors"
                 >
                   {copied
                     ? <><Check className="w-3.5 h-3.5" /> Copied</>
@@ -259,7 +250,7 @@ const Playground = () => {
                 </button>
               </div>
             </div>
-            <pre className="text-xs font-mono bg-[#f0f0f0] rounded-lg p-4 overflow-x-auto text-primary-black leading-relaxed">
+            <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 overflow-x-auto text-gray-900 leading-relaxed">
               {JSON.stringify(response, null, 2)}
             </pre>
           </div>
@@ -268,10 +259,10 @@ const Playground = () => {
         {/* Error */}
         {error && (
           <div className="mt-6">
-            <span className="text-xs font-sans font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600 mb-2 inline-block">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 mb-2 inline-block">
               ERROR
             </span>
-            <pre className="text-xs font-mono bg-[#f0f0f0] rounded-lg p-4 overflow-x-auto text-red-600 mt-2">
+            <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 overflow-x-auto text-gray-600 mt-2">
               {error}
             </pre>
           </div>

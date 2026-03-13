@@ -1,7 +1,6 @@
 import { ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Home, Play, List, BarChart3, Key, Settings, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 
@@ -23,38 +22,61 @@ const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutPr
   }
 
   const handleSignOut = () => {
-    // Fire and forget — don't await, redirect immediately
     signOut().catch(() => {})
-    // Clear local storage as fallback and redirect
     localStorage.removeItem('sb-kfuuqxmaihlwhzfibhvj-auth-token')
     window.location.href = '/auth?mode=signin'
   }
 
+  const navItems: { id: typeof activeTab; label: string; icon: typeof Home }[] = [
+    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'playground', label: 'Playground', icon: Play },
+  ]
+
+  const navItems2: { id: typeof activeTab; label: string; icon: typeof Home }[] = [
+    { id: 'activity-logs', label: 'Activity Logs', icon: List },
+    { id: 'usage', label: 'Usage', icon: BarChart3 },
+    { id: 'api-key', label: 'API Key', icon: Key },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ]
+
+  const renderNavButton = (item: { id: typeof activeTab; label: string; icon: typeof Home }) => {
+    const Icon = item.icon
+    const isActive = activeTab === item.id
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleTabClick(item.id)}
+        className={`w-full flex items-center ${isSidebarOpen ? 'px-3' : 'px-0 justify-center'} py-2.5 text-[13px] font-medium rounded-lg transition-colors ${
+          isActive
+            ? 'text-black bg-gray-50'
+            : 'text-gray-500 hover:bg-gray-50 hover:text-black'
+        }`}
+        title={!isSidebarOpen ? item.label : ''}
+      >
+        <Icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-gray-400'} ${isSidebarOpen ? 'mr-3' : ''}`} />
+        {isSidebarOpen && item.label}
+      </button>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-[#f9f9f9] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Fixed Header */}
-      <header className="bg-white h-[73px] border-b border-detail-light fixed top-0 left-0 right-0 z-50">
+      <header className="bg-white h-[60px] border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
         <div className="flex h-full">
-          {/* Left section - static width matching expanded sidebar */}
-          <div className="w-[280px] flex items-center">
+          <div className="w-[240px] flex items-center">
             <div className="px-4 flex items-center">
-              <img
-                src="/aurora-logo-black.png"
-                alt="Aurora"
-                className="h-8 w-auto"
-              />
-              <span className="ml-4 text-sm text-detail-gray font-sans">Dashboard</span>
+              <img src="/aurora-logo-black.png" alt="Aurora" className="h-7 w-auto" />
             </div>
           </div>
-
-          {/* Right section */}
-          <div className="flex-1 flex items-center justify-end px-4 sm:px-6 lg:px-8">
+          <div className="flex-1 flex items-center justify-end px-6">
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-detail-gray font-sans">{user?.email}</span>
+              <span className="text-[13px] text-gray-500">{user?.email}</span>
               <Button
                 size="sm"
                 onClick={handleSignOut}
-                className="bg-primary-black text-white hover:bg-detail-gray font-heading"
+                variant="ghost"
+                className="text-gray-500 hover:text-black hover:bg-gray-50 h-8"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
@@ -64,105 +86,30 @@ const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutPr
         </div>
       </header>
 
-      {/* Content area with sidebar and main content */}
-      <div className="flex pt-[73px] flex-1">
-        {/* Fixed Sidebar */}
+      {/* Content area */}
+      <div className="flex pt-[60px] flex-1">
+        {/* Sidebar */}
         <aside
-          className={`fixed left-0 top-[73px] h-[calc(100vh-73px)] bg-white border-r border-detail-light transition-all duration-300 ease-in-out z-40 ${
-            isSidebarOpen ? 'w-[280px]' : 'w-[72px]'
+          className={`fixed left-0 top-[60px] h-[calc(100vh-60px)] bg-white border-r border-gray-200 transition-all duration-300 ease-in-out z-40 ${
+            isSidebarOpen ? 'w-[240px]' : 'w-[64px]'
           }`}
         >
-          <nav className="p-4 h-full flex flex-col overflow-y-auto">
-            <div className="space-y-1 flex-1">
-              <button
-                onClick={() => handleTabClick('overview')}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors ${
-                  activeTab === 'overview'
-                    ? 'text-primary-black font-bold bg-[#f8f8f8]'
-                    : 'text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black'
-                }`}
-                title={!isSidebarOpen ? 'Overview' : ''}
-              >
-                <Home className={`w-4 h-4 ${isSidebarOpen ? 'mr-3' : ''}`} />
-                {isSidebarOpen && 'Overview'}
-              </button>
+          <nav className="p-3 h-full flex flex-col overflow-y-auto">
+            <div className="space-y-0.5 flex-1">
+              {navItems.map(renderNavButton)}
 
-              <button
-                onClick={() => handleTabClick('playground')}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors ${
-                  activeTab === 'playground'
-                    ? 'text-primary-black font-bold bg-[#f8f8f8]'
-                    : 'text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black'
-                }`}
-                title={!isSidebarOpen ? 'Playground' : ''}
-              >
-                <Play className={`w-4 h-4 ${isSidebarOpen ? 'mr-3' : ''}`} />
-                {isSidebarOpen && 'Playground'}
-              </button>
-
-              {/* Divider */}
               <div className="py-2">
-                <Separator className="bg-detail-light" />
+                <div className="border-t border-gray-200" />
               </div>
 
-              <button
-                onClick={() => handleTabClick('activity-logs')}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors ${
-                  activeTab === 'activity-logs'
-                    ? 'text-primary-black font-bold bg-[#f8f8f8]'
-                    : 'text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black'
-                }`}
-                title={!isSidebarOpen ? 'Activity Logs' : ''}
-              >
-                <List className={`w-4 h-4 ${isSidebarOpen ? 'mr-3' : ''}`} />
-                {isSidebarOpen && 'Activity Logs'}
-              </button>
-
-              <button
-                onClick={() => handleTabClick('usage')}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors ${
-                  activeTab === 'usage'
-                    ? 'text-primary-black font-bold bg-[#f8f8f8]'
-                    : 'text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black'
-                }`}
-                title={!isSidebarOpen ? 'Usage' : ''}
-              >
-                <BarChart3 className={`w-4 h-4 ${isSidebarOpen ? 'mr-3' : ''}`} />
-                {isSidebarOpen && 'Usage'}
-              </button>
-
-              <button
-                onClick={() => handleTabClick('api-key')}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors ${
-                  activeTab === 'api-key'
-                    ? 'text-primary-black font-bold bg-[#f8f8f8]'
-                    : 'text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black'
-                }`}
-                title={!isSidebarOpen ? 'API Key' : ''}
-              >
-                <Key className={`w-4 h-4 ${isSidebarOpen ? 'mr-3' : ''}`} />
-                {isSidebarOpen && 'API Key'}
-              </button>
-
-              <button
-                onClick={() => handleTabClick('settings')}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors ${
-                  activeTab === 'settings'
-                    ? 'text-primary-black font-bold bg-[#f8f8f8]'
-                    : 'text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black'
-                }`}
-                title={!isSidebarOpen ? 'Settings' : ''}
-              >
-                <Settings className={`w-4 h-4 ${isSidebarOpen ? 'mr-3' : ''}`} />
-                {isSidebarOpen && 'Settings'}
-              </button>
+              {navItems2.map(renderNavButton)}
             </div>
 
-            {/* Collapse/Expand Button at Bottom */}
-            <div className="pt-4 border-t border-detail-light">
+            {/* Collapse button */}
+            <div className="pt-3 border-t border-gray-200">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className={`w-full flex items-center ${isSidebarOpen ? 'px-4' : 'px-0 justify-center'} py-3 text-sm font-heading rounded-lg transition-colors text-detail-gray hover:bg-[#f8f8f8] hover:text-primary-black`}
+                className={`w-full flex items-center ${isSidebarOpen ? 'px-3' : 'px-0 justify-center'} py-2.5 text-[13px] font-medium rounded-lg transition-colors text-gray-500 hover:bg-gray-50 hover:text-black`}
                 title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
               >
                 {isSidebarOpen ? (
@@ -178,13 +125,13 @@ const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutPr
           </nav>
         </aside>
 
-        {/* Scrollable Main Content */}
+        {/* Main Content */}
         <main
           className={`flex-1 transition-all duration-300 ease-in-out ${
-            isSidebarOpen ? 'ml-[280px]' : 'ml-[72px]'
-          } overflow-y-auto h-[calc(100vh-73px)]`}
+            isSidebarOpen ? 'ml-[240px]' : 'ml-[64px]'
+          } overflow-y-auto h-[calc(100vh-60px)]`}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-[1200px] mx-auto px-8 py-8">
             {children}
           </div>
         </main>

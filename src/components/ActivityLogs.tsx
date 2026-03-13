@@ -20,13 +20,11 @@ interface ApiRequest {
 const PAGE_SIZE = 10
 const CACHE_KEY = 'aurora_activity_logs'
 
-// Cache helpers — only caches the default view (page 0, no filters)
 function loadCache(): ApiRequest[] | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const { data, ts } = JSON.parse(raw)
-    // Expire after 10 minutes
     if (Date.now() - ts > 10 * 60 * 1000) return null
     return data as ApiRequest[]
   } catch {
@@ -38,14 +36,6 @@ function saveCache(data: ApiRequest[]) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }))
   } catch { /* quota exceeded — ignore */ }
-}
-
-const statusColors: Record<string, string> = {
-  succeeded: 'text-emerald-600',
-  failed: 'text-red-500',
-  authorized: 'text-amber-600',
-  received: 'text-gray-400',
-  rejected: 'text-red-500',
 }
 
 const statusLabels: Record<string, string> = {
@@ -143,10 +133,10 @@ function RequestDetail({ request }: { request: ApiRequest }) {
   if (loading) {
     return (
       <div className="px-6 py-4">
-        <div className="bg-[#f0f0f0] rounded-lg p-4 space-y-2">
-          <div className="h-3 bg-gray-200 rounded animate-pulse w-1/3" />
-          <div className="h-3 bg-gray-200 rounded animate-pulse w-2/3" />
-          <div className="h-3 bg-gray-200 rounded animate-pulse w-1/2" />
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-2/3" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
         </div>
       </div>
     )
@@ -155,7 +145,7 @@ function RequestDetail({ request }: { request: ApiRequest }) {
   if (request.status === 'succeeded' && responseData) {
     return (
       <div className="px-6 py-4">
-        <pre className="text-xs font-mono bg-[#f0f0f0] rounded-lg p-4 overflow-x-auto text-primary-black">
+        <pre className="text-[13px] font-mono bg-gray-100 rounded-lg p-4 overflow-x-auto text-gray-900">
           {JSON.stringify(responseData, null, 2)}
         </pre>
       </div>
@@ -193,7 +183,7 @@ function RequestDetail({ request }: { request: ApiRequest }) {
 
   return (
     <div className="px-6 py-4">
-      <pre className="text-xs font-mono bg-[#f0f0f0] rounded-lg p-4 overflow-x-auto text-primary-black">
+      <pre className="text-[13px] font-mono bg-gray-100 rounded-lg p-4 overflow-x-auto text-gray-900">
         {JSON.stringify({
           status: errorInfo.status,
           ...(request.domain && { company: request.domain }),
@@ -207,7 +197,6 @@ function RequestDetail({ request }: { request: ApiRequest }) {
 const ActivityLogs = () => {
   const { user } = useAuth()
 
-  // Seed state from cache so data is visible instantly on refresh
   const cached = useRef(loadCache())
   const [requests, setRequests] = useState<ApiRequest[]>(cached.current || [])
   const [loading, setLoading] = useState(false)
@@ -219,10 +208,8 @@ const ActivityLogs = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateRange, setDateRange] = useState<DateRange>('last30')
-  // Only show skeleton if there's no cached data to display
   const [initialLoad, setInitialLoad] = useState(!cached.current)
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery)
@@ -231,12 +218,10 @@ const ActivityLogs = () => {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Reset page when filters change
   useEffect(() => {
     setPage(0)
   }, [statusFilter, dateRange])
 
-  // Fetch requests — depend on user.id (stable string) not user (object ref changes on token refresh)
   const userId = user?.id
   useEffect(() => {
     if (!userId) {
@@ -292,7 +277,6 @@ const ActivityLogs = () => {
           setHasNextPage(rows.length > PAGE_SIZE)
           setRequests(rows.slice(0, PAGE_SIZE))
 
-          // Update cache when fetching the default view
           if (isDefaultView) {
             saveCache(rows.slice(0, PAGE_SIZE))
           }
@@ -300,7 +284,6 @@ const ActivityLogs = () => {
       } catch (err) {
         if (controller.signal.aborted) return
         if (err instanceof DOMException && err.name === 'AbortError') {
-          // Only show timeout error if we have no data to display
           if (requests.length === 0) {
             setError('Request timed out. Please try again.')
           }
@@ -329,67 +312,66 @@ const ActivityLogs = () => {
     <div className="space-y-0">
       {/* Header */}
       <div className="pb-8">
-        <h1 className="text-4xl font-heading font-bold text-primary-black leading-tight">
+        <h1 className="text-[36px] font-semibold tracking-[-0.02em] leading-[1.2] text-gray-900">
           Activity Logs
         </h1>
-        <p className="text-detail-gray font-sans mt-1">
+        <p className="text-gray-500 mt-1 text-[15px]">
           Take a look at your requests activity
         </p>
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white rounded-t-xl border border-detail-light border-b-0 px-6 py-4">
+      <div className="bg-white rounded-t-xl border border-gray-200 border-b-0 px-5 py-3">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-[360px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-detail-gray" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-white border-detail-light rounded-full h-10 font-sans text-sm"
+              className="pl-9 bg-white border-gray-200 rounded-lg h-9 text-[13px]"
             />
           </div>
 
           {/* Status filter */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-detail-gray pointer-events-none" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="appearance-none pl-9 pr-8 h-10 border border-detail-light rounded-full bg-white text-sm font-sans text-primary-black cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-black/10"
+              className="appearance-none pl-9 pr-8 h-9 border border-gray-200 rounded-lg bg-white text-[13px] text-gray-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-black/5"
             >
               <option value="all">All Statuses</option>
               <option value="succeeded">Completed</option>
               <option value="failed">Failed</option>
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-detail-gray pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           </div>
 
-          {/* Spacer */}
           <div className="flex-1" />
 
           {/* Date range */}
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-detail-gray pointer-events-none" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRange)}
-              className="appearance-none pl-9 pr-8 h-10 border border-detail-light rounded-full bg-white text-sm font-sans text-primary-black cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-black/10"
+              className="appearance-none pl-9 pr-8 h-9 border border-gray-200 rounded-lg bg-white text-[13px] text-gray-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-black/5"
             >
               <option value="last7">Last 7 days</option>
               <option value="last30">Last 30 days</option>
               <option value="all">All time</option>
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-detail-gray pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-b-xl border border-detail-light overflow-hidden">
+      <div className="bg-white rounded-b-xl border border-gray-200 overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-[120px_1fr_130px_100px_140px] gap-4 px-6 py-3 text-xs font-sans font-medium text-detail-gray uppercase tracking-wider border-b border-detail-light">
+        <div className="grid grid-cols-[120px_1fr_130px_100px_140px] gap-4 px-5 py-3 bg-gray-50 text-[12px] font-medium text-gray-500 uppercase tracking-[0.05em] border-b border-gray-100">
           <div>Endpoint</div>
           <div>Domain</div>
           <div>Status</div>
@@ -397,43 +379,43 @@ const ActivityLogs = () => {
           <div>Time</div>
         </div>
 
-        {/* Loading bar — only show when refreshing data behind existing rows */}
+        {/* Loading bar */}
         {loading && !initialLoad && requests.length > 0 && (
           <div className="h-0.5 bg-gray-100 overflow-hidden">
-            <div className="h-full bg-primary-black animate-pulse w-1/2" />
+            <div className="h-full bg-black animate-pulse w-1/2" />
           </div>
         )}
 
         {/* Content states */}
         {error && requests.length === 0 ? (
           <div className="text-center py-16">
-            <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <h3 className="text-base font-medium text-primary-black mb-1">Failed to load logs</h3>
-            <p className="text-detail-gray font-sans text-sm mb-4">{error}</p>
+            <AlertCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-base font-medium text-gray-900 mb-1">Failed to load logs</h3>
+            <p className="text-gray-500 text-sm mb-4">{error}</p>
           </div>
         ) : initialLoad && requests.length === 0 ? (
-          <div className="divide-y divide-detail-light">
+          <div className="divide-y divide-gray-100">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[120px_1fr_130px_100px_140px] gap-4 px-6 py-5 items-center"
+                className="grid grid-cols-[120px_1fr_130px_100px_140px] gap-4 px-5 py-5 items-center"
               >
-                <div className="h-4 bg-gray-100 rounded-md animate-pulse w-16" />
-                <div className="h-4 bg-gray-100 rounded-md animate-pulse" style={{ width: `${50 + (i % 3) * 15}%` }} />
-                <div className="h-4 bg-gray-100 rounded-md animate-pulse w-20" />
-                <div className="h-4 bg-gray-100 rounded-md animate-pulse w-12" />
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-16" />
+                <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: `${50 + (i % 3) * 15}%` }} />
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-20" />
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-12" />
                 <div className="space-y-1.5">
-                  <div className="h-3 bg-gray-100 rounded-md animate-pulse w-20" />
-                  <div className="h-3 bg-gray-100 rounded-md animate-pulse w-14" />
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-20" />
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-14" />
                 </div>
               </div>
             ))}
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-16">
-            <Globe className="w-10 h-10 text-detail-gray mx-auto mb-3" />
-            <h3 className="text-base font-medium text-primary-black mb-1">No requests found</h3>
-            <p className="text-detail-gray font-sans text-sm">
+            <Globe className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-base font-medium text-gray-900 mb-1">No requests found</h3>
+            <p className="text-gray-500 text-sm">
               {searchQuery || statusFilter !== 'all'
                 ? 'Try adjusting your filters.'
                 : 'API requests will appear here once you start using your API key.'}
@@ -441,47 +423,45 @@ const ActivityLogs = () => {
           </div>
         ) : (
           <>
-            {/* Table rows */}
-            <div className="divide-y divide-detail-light">
+            <div className="divide-y divide-gray-100">
               {requests.map((req) => {
                 const time = formatTime(req.received_at)
-                const statusColor = statusColors[req.status] || 'text-gray-400'
                 const statusLabel = statusLabels[req.status] || req.status.toUpperCase()
                 const isExpanded = expandedId === req.id
+                const isCompleted = req.status === 'succeeded'
 
                 return (
                   <div key={req.id}>
                     <button
                       onClick={() => toggleExpand(req.id)}
-                      className="w-full grid grid-cols-[120px_1fr_130px_100px_140px] gap-4 px-6 py-5 text-sm hover:bg-[#fafafa] transition-colors items-center text-left"
+                      className="w-full grid grid-cols-[120px_1fr_130px_100px_140px] gap-4 px-5 py-4 text-sm hover:bg-gray-50 transition-colors items-center text-left"
                     >
-                      <div className="text-detail-gray font-sans truncate">
+                      <div className="text-gray-500 text-[13px] truncate">
                         {req.endpoint ? req.endpoint.replace('/v1/', '/').toUpperCase() : '--'}
                       </div>
-                      <div className="text-primary-black font-sans truncate" title={req.domain || '--'}>
+                      <div className="text-gray-900 text-[13px] truncate" title={req.domain || '--'}>
                         {req.domain || '--'}
                       </div>
-                      <div className={`font-sans font-medium text-xs ${statusColor}`}>
+                      <div className={`text-[12px] font-semibold ${isCompleted ? 'text-black' : 'text-gray-400'}`}>
                         {statusLabel}
                       </div>
-                      <div className="text-detail-gray font-mono text-xs">
+                      <div className="text-gray-500 font-mono text-[12px]">
                         {formatDuration(req.duration_ms)}
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="text-detail-gray font-sans text-xs leading-snug">
+                        <div className="text-gray-400 text-[12px] leading-snug">
                           <div>{time.date}</div>
                           <div>{time.time}</div>
                         </div>
                         {isExpanded
-                          ? <ChevronUp className="w-4 h-4 text-detail-gray shrink-0" />
-                          : <ChevronDown className="w-4 h-4 text-detail-gray shrink-0" />
+                          ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+                          : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                         }
                       </div>
                     </button>
 
-                    {/* Expanded detail */}
                     {isExpanded && (
-                      <div className="bg-[#f9f9f9] border-t border-detail-light">
+                      <div className="bg-gray-50 border-t border-gray-100">
                         <RequestDetail request={req} />
                       </div>
                     )}
@@ -494,8 +474,8 @@ const ActivityLogs = () => {
 
         {/* Pagination */}
         {!loading && !error && requests.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-detail-light">
-            <span className="text-sm text-detail-gray font-sans">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+            <span className="text-[13px] text-gray-500">
               Page {page + 1}
             </span>
             <div className="flex items-center gap-2">
@@ -504,7 +484,7 @@ const ActivityLogs = () => {
                 size="sm"
                 disabled={page === 0}
                 onClick={() => { setPage(p => p - 1); setExpandedId(null) }}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 border-gray-200"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -513,7 +493,7 @@ const ActivityLogs = () => {
                 size="sm"
                 disabled={!hasNextPage}
                 onClick={() => { setPage(p => p + 1); setExpandedId(null) }}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 border-gray-200"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>

@@ -1,58 +1,53 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Separator } from '@/components/ui/separator';
 
 const Pricing = () => {
   const [billedYearly, setBilledYearly] = useState(true);
 
-  // Base monthly prices
   const explorerMonthly = 19;
   const standardMonthly = 99;
 
-  // Calculate displayed price (always show monthly rate)
   const getDisplayPrice = (monthlyPrice: number) => {
     if (billedYearly) {
-      // Show discounted monthly rate when billed yearly (16.67% discount)
       return Math.round(monthlyPrice * 0.8333);
     }
     return monthlyPrice;
   };
 
   return (
-    <div className="min-h-screen bg-[#f9f9f9]">
+    <div className="min-h-screen bg-white">
       <Header />
 
       <main className="pt-40 pb-20 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1200px] mx-auto">
           {/* Header */}
           <div className="text-center mb-20">
-            <h1 className="text-4xl md:text-5xl font-heading font-medium mb-4 text-primary-black">
+            <h1 className="text-4xl md:text-5xl lg:text-[56px] font-semibold tracking-[-0.03em] leading-[1.1] mb-4 text-gray-900">
               Flexible pricing
             </h1>
-            <p className="text-lg text-detail-gray font-sans mb-8">
+            <p className="text-lg text-gray-500 mb-8">
               Explore transparent pricing built for real-world climate use-cases. Start for free, then scale as you grow.
             </p>
 
             {/* Billing Toggle */}
             <div className="flex items-center justify-center gap-3 mb-8">
-              <span className={`text-sm font-sans ${!billedYearly ? 'text-primary-black font-medium' : 'text-detail-gray'}`}>
+              <span className={`text-sm ${!billedYearly ? 'text-black font-medium' : 'text-gray-500'}`}>
                 Billed monthly
               </span>
               <Switch
                 checked={billedYearly}
                 onCheckedChange={setBilledYearly}
-                className="data-[state=checked]:bg-primary-black"
+                className="data-[state=checked]:bg-black"
               />
-              <span className={`text-sm font-sans ${billedYearly ? 'text-primary-black font-medium' : 'text-detail-gray'}`}>
+              <span className={`text-sm ${billedYearly ? 'text-black font-medium' : 'text-gray-500'}`}>
                 Billed yearly
               </span>
               {billedYearly && (
-                <span className="bg-secondary-green text-primary-black px-3 py-1 rounded-full text-xs font-heading font-medium ml-2">
+                <span className="bg-gray-100 text-black px-3 py-1 rounded-full text-xs font-medium ml-2">
                   2 months free
                 </span>
               )}
@@ -62,246 +57,187 @@ const Pricing = () => {
           {/* Pricing Cards */}
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Free Plan */}
-            <div className="rounded-2xl pt-8 px-6 pb-0 border border-gray">
-              <div className="mb-6">
-                <h3 className="text-2xl font-heading font-medium mb-2 text-primary-black">
-                  Free Plan
-                </h3>
-                <p className="text-sm text-detail-gray font-sans">
-                  A lightweight way to try our API. No cost, no card, no hassle.
-                </p>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center gap-2 text-detail-gray mb-8">
-                  <img
-                    src="/aurora-mark-black.png"
-                    alt="Credits"
-                    className="w-5 h-5 object-contain"
-                  />
-                  <span className="font-sans">500 credits</span>
+            <div className="rounded-xl border border-gray-200 bg-white flex flex-col">
+              <div className="p-8 flex-1">
+                <div className="mb-6">
+                  <h3 className="text-2xl font-semibold tracking-[-0.02em] mb-2 text-gray-900">Free Plan</h3>
+                  <p className="text-sm text-gray-500">A lightweight way to try our API. No cost, no card, no hassle.</p>
                 </div>
 
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)] mb-8" />
+                <div className="flex items-center gap-2 text-gray-500 mb-6">
+                  <img src="/aurora-mark-black.png" alt="Credits" className="w-5 h-5 object-contain" />
+                  <span className="text-sm">500 credits</span>
+                </div>
 
-                <div className="py-4 mb-4">
-                  <span className="text-5xl font-heading font-medium text-primary-black">$0</span>
-                  <span className="text-detail-gray font-sans ml-2">one-time</span>
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <span className="text-5xl font-semibold font-mono tracking-[-0.02em] text-gray-900">$0</span>
+                  <span className="text-gray-500 ml-2 text-sm">one-time</span>
                 </div>
 
                 <div className="h-[52px]"></div>
+
+                <Button className="w-full bg-gray-100 text-black hover:bg-gray-200 font-medium rounded-lg" asChild>
+                  <Link to="/auth">Get started</Link>
+                </Button>
               </div>
 
-              <Button
-                className="w-full mb-8 bg-[#e6e6e6] text-primary-black hover:bg-[#d0d0d0] font-heading"
-                asChild
-              >
-                <Link to="/auth">Get started</Link>
-              </Button>
-
-              <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-
-              <ul>
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    Get <strong className="text-primary-black">100</strong> climate profiles
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    <strong className="text-primary-black">2</strong> concurrent requests
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    Low rate limits
-                  </span>
-                </li>
-              </ul>
+              <div className="border-t border-gray-200">
+                <ul>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      Get <strong className="text-gray-900">100</strong> climate profiles
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      <strong className="text-gray-900">2</strong> concurrent requests
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">Low rate limits</span>
+                  </li>
+                </ul>
+              </div>
             </div>
 
             {/* Explorer Plan */}
-            <div className="rounded-2xl pt-8 px-6 pb-0 border border-gray">
-              <div className="mb-6">
-                <h3 className="text-2xl font-heading font-medium mb-2 text-primary-black">
-                  Explorer
-                </h3>
-                <p className="text-sm text-detail-gray font-sans">
-                  Great for side projects and small tools. Fast, simple, no overkill.
-                </p>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center gap-2 text-detail-gray mb-8">
-                  <img
-                    src="/aurora-mark-black.png"
-                    alt="Credits"
-                    className="w-5 h-5 object-contain"
-                  />
-                  <span className="font-sans">3,000 credits</span>
+            <div className="rounded-xl border border-gray-200 bg-white flex flex-col">
+              <div className="p-8 flex-1">
+                <div className="mb-6">
+                  <h3 className="text-2xl font-semibold tracking-[-0.02em] mb-2 text-gray-900">Explorer</h3>
+                  <p className="text-sm text-gray-500">Great for side projects and small tools. Fast, simple, no overkill.</p>
                 </div>
 
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)] mb-8" />
+                <div className="flex items-center gap-2 text-gray-500 mb-6">
+                  <img src="/aurora-mark-black.png" alt="Credits" className="w-5 h-5 object-contain" />
+                  <span className="text-sm">3,000 credits</span>
+                </div>
 
-                <div className="py-4 mb-4">
-                  <span className="text-5xl font-heading font-medium text-primary-black">
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <span className="text-5xl font-semibold font-mono tracking-[-0.02em] text-gray-900">
                     ${getDisplayPrice(explorerMonthly)}
                   </span>
-                  <span className="text-detail-gray font-sans ml-2">/month</span>
+                  <span className="text-gray-500 ml-2 text-sm">/month</span>
                 </div>
 
                 <div className="flex items-center gap-2 h-[52px]">
                   <Switch
                     checked={billedYearly}
                     onCheckedChange={setBilledYearly}
-                    className="data-[state=checked]:bg-primary-black"
+                    className="data-[state=checked]:bg-black"
                   />
-                  <span className="text-xs font-sans text-primary-black whitespace-nowrap">
-                    Billed yearly
-                  </span>
+                  <span className="text-xs text-black whitespace-nowrap">Billed yearly</span>
                   {billedYearly && (
-                    <span className="bg-secondary-green text-primary-black px-2 py-1 rounded-full text-xs font-heading font-medium whitespace-nowrap">
+                    <span className="bg-gray-100 text-black px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap">
                       2 months free
                     </span>
                   )}
                 </div>
+
+                <Button className="w-full bg-gray-100 text-black hover:bg-gray-200 font-medium rounded-lg" asChild>
+                  <Link to="/auth">Subscribe</Link>
+                </Button>
               </div>
 
-              <Button
-                className="w-full mb-8 bg-[#e6e6e6] text-primary-black hover:bg-[#d0d0d0] font-heading"
-                asChild
-              >
-                <Link to="/auth">Subscribe</Link>
-              </Button>
-
-              <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-
-              <ul>
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    Get <strong className="text-primary-black">600</strong> climate profiles
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    <strong className="text-primary-black">5</strong> concurrent requests
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    Basic support
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    <strong className="text-primary-black">$9</strong> per extra <strong className="text-primary-black">1k</strong> credits
-                  </span>
-                </li>
-              </ul>
+              <div className="border-t border-gray-200">
+                <ul>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      Get <strong className="text-gray-900">600</strong> climate profiles
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      <strong className="text-gray-900">5</strong> concurrent requests
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">Basic support</span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      <strong className="text-gray-900">$9</strong> per extra <strong className="text-gray-900">1k</strong> credits
+                    </span>
+                  </li>
+                </ul>
+              </div>
             </div>
 
             {/* Standard Plan */}
-            <div className="rounded-2xl pt-8 px-6 pb-0 border border-gray">
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-2xl font-heading font-medium text-primary-black">
-                    Standard
-                  </h3>
-                  <span className="bg-secondary-green text-primary-black px-3 py-1 rounded-full text-xs font-heading font-medium">
-                    Most popular
-                  </span>
-                </div>
-                <p className="text-sm text-detail-gray font-sans">
-                  Perfect for scaling with less effort. Simple, solid, dependable.
-                </p>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center gap-2 text-detail-gray mb-8">
-                  <img
-                    src="/aurora-mark-black.png"
-                    alt="Credits"
-                    className="w-5 h-5 object-contain"
-                  />
-                  <span className="font-sans">100,000 credits</span>
+            <div className="rounded-xl border-2 border-black bg-white flex flex-col">
+              <div className="p-8 flex-1">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-2xl font-semibold tracking-[-0.02em] text-gray-900">Standard</h3>
+                    <span className="bg-black text-white px-3 py-1 rounded-full text-xs font-medium">Most popular</span>
+                  </div>
+                  <p className="text-sm text-gray-500">Perfect for scaling with less effort. Simple, solid, dependable.</p>
                 </div>
 
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)] mb-8" />
+                <div className="flex items-center gap-2 text-gray-500 mb-6">
+                  <img src="/aurora-mark-black.png" alt="Credits" className="w-5 h-5 object-contain" />
+                  <span className="text-sm">100,000 credits</span>
+                </div>
 
-                <div className="py-4 mb-4">
-                  <span className="text-5xl font-heading font-medium text-primary-black">
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <span className="text-5xl font-semibold font-mono tracking-[-0.02em] text-gray-900">
                     ${getDisplayPrice(standardMonthly)}
                   </span>
-                  <span className="text-detail-gray font-sans ml-2">/month</span>
+                  <span className="text-gray-500 ml-2 text-sm">/month</span>
                 </div>
 
                 <div className="flex items-center gap-2 h-[52px]">
                   <Switch
                     checked={billedYearly}
                     onCheckedChange={setBilledYearly}
-                    className="data-[state=checked]:bg-primary-black"
+                    className="data-[state=checked]:bg-black"
                   />
-                  <span className="text-xs font-sans text-primary-black whitespace-nowrap">
-                    Billed yearly
-                  </span>
+                  <span className="text-xs text-black whitespace-nowrap">Billed yearly</span>
                   {billedYearly && (
-                    <span className="bg-secondary-green text-primary-black px-2 py-1 rounded-full text-xs font-heading font-medium whitespace-nowrap">
+                    <span className="bg-gray-100 text-black px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap">
                       2 months free
                     </span>
                   )}
                 </div>
+
+                <Button className="w-full bg-black text-white hover:bg-gray-800 font-medium rounded-lg" asChild>
+                  <Link to="/auth">Subscribe</Link>
+                </Button>
               </div>
 
-              <Button
-                className="w-full mb-8 bg-primary-black text-white hover:bg-detail-gray font-heading"
-                asChild
-              >
-                <Link to="/auth">Subscribe</Link>
-              </Button>
-
-              <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-
-              <ul>
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    Get <strong className="text-primary-black">20,000</strong> climate profiles
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    <strong className="text-primary-black">50</strong> concurrent requests
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    Standard support
-                  </span>
-                </li>
-                <Separator className="bg-detail-light -mx-6 w-[calc(100%+3rem)]" />
-                <li className="flex items-start gap-3 py-3">
-                  <CheckCircle2 className="w-5 h-5 text-detail-gray flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-detail-gray font-sans">
-                    <strong className="text-primary-black">$47</strong> per extra <strong className="text-primary-black">35k</strong> credits
-                  </span>
-                </li>
-              </ul>
+              <div className="border-t border-gray-200">
+                <ul>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      Get <strong className="text-gray-900">20,000</strong> climate profiles
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      <strong className="text-gray-900">50</strong> concurrent requests
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5 border-b border-gray-100">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">Standard support</span>
+                  </li>
+                  <li className="flex items-center gap-3 px-8 py-3.5">
+                    <span className="text-gray-400 text-xs">&#9679;</span>
+                    <span className="text-sm text-gray-500">
+                      <strong className="text-gray-900">$47</strong> per extra <strong className="text-gray-900">35k</strong> credits
+                    </span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

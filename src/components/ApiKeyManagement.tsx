@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/integrations/supabase/client'
 import { showSuccess, showError } from '@/utils/toast'
 import { Copy, EyeOff, RefreshCw, Key } from 'lucide-react'
@@ -190,171 +188,160 @@ const ApiKeyManagement = () => {
 
   if (loading) {
     return (
-      <Card className="bg-white">
-        <CardContent className="flex items-center justify-center py-8">
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <div className="flex items-center justify-center py-4">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-black mx-auto"></div>
-            <p className="mt-2 text-sm text-detail-gray font-sans">Loading API key...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
+            <p className="mt-2 text-[13px] text-gray-500">Loading API key...</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Card className="bg-white">
-        <CardContent className="py-8">
-          <Alert variant="destructive">
-            <AlertDescription>
-              {error}
-            </AlertDescription>
-          </Alert>
-          <Button onClick={fetchApiKey} className="mt-4 bg-primary-black text-white hover:bg-detail-gray">
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mb-4">
+          <p className="text-sm text-gray-600">{error}</p>
+        </div>
+        <Button onClick={fetchApiKey} className="bg-black text-white hover:bg-gray-800">
+          Retry
+        </Button>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Key className="w-5 h-5 mr-2" />
-            API Key Management
-          </CardTitle>
-          <CardDescription>
-            Manage your API key for accessing Aurora Carbon data
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {!apiKey ? (
-            <div className="text-center py-8">
-              <Key className="w-12 h-12 text-detail-gray mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-primary-black mb-2">No API Key</h3>
-              <p className="text-detail-gray font-sans mb-6">
-                Generate your first API key to start using the Aurora Carbon API
-              </p>
-              <Button onClick={generateApiKey} disabled={generating} className="bg-primary-black text-white hover:bg-detail-gray">
-                {generating ? 'Generating...' : 'Generate API Key'}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <Label>API Key</Label>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Input
-                    value={
-                      showPlaintext && plaintextKey
-                        ? plaintextKey
-                        : `${apiKey.prefix}••••••••••••••••${apiKey.last_four}`
-                    }
-                    readOnly
-                    className="font-mono text-sm"
-                  />
-                  {showPlaintext && plaintextKey ? (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => copyToClipboard(plaintextKey)}
-                        className="bg-primary-black text-white hover:bg-detail-gray"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={hidePlaintext}
-                        className="bg-primary-black text-white hover:bg-detail-gray"
-                      >
-                        <EyeOff className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <div className="flex items-center gap-2 mb-1">
+          <Key className="w-5 h-5 text-gray-900" />
+          <h3 className="text-xl font-semibold tracking-[-0.01em] text-gray-900">API Key Management</h3>
+        </div>
+        <p className="text-[13px] text-gray-500 mb-6">
+          Manage your API key for accessing Aurora Carbon data
+        </p>
+
+        {!apiKey ? (
+          <div className="text-center py-8">
+            <Key className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No API Key</h3>
+            <p className="text-gray-500 text-sm mb-6">
+              Generate your first API key to start using the Aurora Carbon API
+            </p>
+            <Button onClick={generateApiKey} disabled={generating} className="bg-black text-white hover:bg-gray-800">
+              {generating ? 'Generating...' : 'Generate API Key'}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-[13px] text-gray-500">API Key</Label>
+              <div className="flex items-center space-x-2 mt-1">
+                <Input
+                  value={
+                    showPlaintext && plaintextKey
+                      ? plaintextKey
+                      : `${apiKey.prefix}••••••••••••••••${apiKey.last_four}`
+                  }
+                  readOnly
+                  className="font-mono text-[13px] bg-gray-50 border-gray-200"
+                />
+                {showPlaintext && plaintextKey ? (
+                  <>
                     <Button
                       size="sm"
-                      onClick={() => copyToClipboard(`${apiKey.prefix}••••••••••••••••${apiKey.last_four}`)}
-                      className="bg-primary-black text-white hover:bg-detail-gray"
+                      onClick={() => copyToClipboard(plaintextKey)}
+                      className="bg-black text-white hover:bg-gray-800"
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="text-xs text-detail-gray">Created</Label>
-                  <p>{new Date(apiKey.created_at).toLocaleDateString()}</p>
-                </div>
-                {apiKey.rotated_at && (
-                  <div>
-                    <Label className="text-xs text-detail-gray">Last Rotated</Label>
-                    <p>{new Date(apiKey.rotated_at).toLocaleDateString()}</p>
-                  </div>
+                    <Button
+                      size="sm"
+                      onClick={hidePlaintext}
+                      className="bg-black text-white hover:bg-gray-800"
+                    >
+                      <EyeOff className="w-4 h-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => copyToClipboard(`${apiKey.prefix}••••••••••••••••${apiKey.last_four}`)}
+                    className="bg-black text-white hover:bg-gray-800"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-
-              <div className="pt-4">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      disabled={generating}
-                      className="bg-primary-black text-white hover:bg-detail-gray"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Regenerate Key
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Regenerate API Key?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will invalidate your current API key and generate a new one.
-                        Any applications using the current key will stop working until updated.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={regenerateApiKey}
-                        className="bg-primary-black text-white hover:bg-detail-gray"
-                      >
-                        Regenerate Key
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
             </div>
-          )}
 
-          {showPlaintext && plaintextKey && (
-            <Alert>
-              <AlertDescription>
-                <strong>Important:</strong> This is the only time you'll see your API key in plain text.
-                Make sure to copy and store it securely. Once you hide it, you'll only see the masked version.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <Label className="text-[12px] text-gray-400 uppercase tracking-wider">Created</Label>
+                <p className="text-gray-900 mt-0.5">{new Date(apiKey.created_at).toLocaleDateString()}</p>
+              </div>
+              {apiKey.rotated_at && (
+                <div>
+                  <Label className="text-[12px] text-gray-400 uppercase tracking-wider">Last Rotated</Label>
+                  <p className="text-gray-900 mt-0.5">{new Date(apiKey.rotated_at).toLocaleDateString()}</p>
+                </div>
+              )}
+            </div>
 
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Usage Examples</CardTitle>
-          <CardDescription>
-            How to use your API key to authenticate requests
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+            <div className="pt-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={generating} className="bg-black text-white hover:bg-gray-800">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Regenerate Key
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Regenerate API Key?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will invalidate your current API key and generate a new one.
+                      Any applications using the current key will stop working until updated.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={regenerateApiKey}
+                      className="bg-black text-white hover:bg-gray-800"
+                    >
+                      Regenerate Key
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        )}
+
+        {showPlaintext && plaintextKey && (
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-6">
+            <p className="text-sm text-gray-600">
+              <strong>Important:</strong> This is the only time you'll see your API key in plain text.
+              Make sure to copy and store it securely. Once you hide it, you'll only see the masked version.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <h3 className="text-xl font-semibold tracking-[-0.01em] text-gray-900 mb-1">Usage Examples</h3>
+        <p className="text-[13px] text-gray-500 mb-6">
+          How to use your API key to authenticate requests
+        </p>
+
+        <div className="space-y-4">
           <div>
-            <Label className="text-sm font-medium">cURL</Label>
-            <div className="mt-1 p-3 bg-[#f9f9f9] rounded-md">
-              <code className="text-sm">
+            <Label className="text-[13px] font-medium text-gray-900">cURL</Label>
+            <div className="mt-1 p-4 bg-gray-50 rounded-lg">
+              <code className="text-[13px] font-mono text-gray-900">
                 curl -X POST https://kfuuqxmaihlwhzfibhvj.supabase.co/functions/v1/verify-api-key \<br />
                 &nbsp;&nbsp;-H "Authorization: Bearer YOUR_API_KEY"
               </code>
@@ -362,9 +349,9 @@ const ApiKeyManagement = () => {
           </div>
 
           <div>
-            <Label className="text-sm font-medium">JavaScript</Label>
-            <div className="mt-1 p-3 bg-[#f9f9f9] rounded-md">
-              <code className="text-sm">
+            <Label className="text-[13px] font-medium text-gray-900">JavaScript</Label>
+            <div className="mt-1 p-4 bg-gray-50 rounded-lg">
+              <code className="text-[13px] font-mono text-gray-900">
                 fetch('https://kfuuqxmaihlwhzfibhvj.supabase.co/functions/v1/verify-api-key', {'{'}
                 <br />
                 &nbsp;&nbsp;method: 'POST',
@@ -379,8 +366,8 @@ const ApiKeyManagement = () => {
               </code>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { supabase } from '@/integrations/supabase/client'
 import { showSuccess, showError } from '@/utils/toast'
@@ -60,142 +58,132 @@ const AccountSettings = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Account Information</CardTitle>
-          <CardDescription>
-            Your basic account details
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {/* Account Information */}
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <h3 className="text-xl font-semibold tracking-[-0.01em] text-gray-900 mb-1">Account Information</h3>
+        <p className="text-[13px] text-gray-500 mb-6">Your basic account details</p>
+
+        <div className="space-y-4">
           <div>
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email" className="text-[13px] text-gray-500">Email Address</Label>
             <Input
               id="email"
               type="email"
               value={user?.email || ''}
               disabled
-              className="mt-1"
+              className="mt-1 bg-gray-50 border-gray-200"
             />
           </div>
           <div>
-            <Label>Account Created</Label>
-            <p className="text-sm text-gray-600 mt-1">
+            <Label className="text-[13px] text-gray-500">Account Created</Label>
+            <p className="text-sm text-gray-900 mt-1">
               {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
+      {/* Change Password */}
       {isEmailAuth && (
-        <Card className="bg-white">
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-            <CardDescription>
-              Update your account password
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="border border-gray-200 rounded-xl p-8 bg-white">
+          <h3 className="text-xl font-semibold tracking-[-0.01em] text-gray-900 mb-1">Change Password</h3>
+          <p className="text-[13px] text-gray-500 mb-6">Update your account password</p>
+
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password" className="text-[13px] text-gray-500">New Password</Label>
               <Input
                 id="new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="mt-1"
+                className="mt-1 border-gray-200"
               />
             </div>
             <div>
-              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Label htmlFor="confirm-password" className="text-[13px] text-gray-500">Confirm Password</Label>
               <Input
                 id="confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1"
+                className="mt-1 border-gray-200"
               />
             </div>
             <Button
               onClick={handlePasswordChange}
               disabled={isChangingPassword || !newPassword || !confirmPassword}
-              className="bg-primary-black text-white hover:bg-detail-gray"
+              className="bg-black text-white hover:bg-gray-800"
             >
               {isChangingPassword ? 'Updating...' : 'Update Password'}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Connected Accounts</CardTitle>
-          <CardDescription>
-            Manage your connected social accounts
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {/* Connected Accounts */}
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <h3 className="text-xl font-semibold tracking-[-0.01em] text-gray-900 mb-1">Connected Accounts</h3>
+        <p className="text-[13px] text-gray-500 mb-6">Manage your connected social accounts</p>
+
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Mail className="w-5 h-5 text-gray-400" />
               <div>
-                <h4 className="font-medium">Email</h4>
-                <p className="text-sm text-gray-600">{user?.email}</p>
+                <h4 className="text-sm font-medium text-gray-900">Email</h4>
+                <p className="text-[13px] text-gray-500">{user?.email}</p>
               </div>
             </div>
-            <span className="text-sm text-green-600">Connected</span>
+            <span className="text-[12px] font-medium text-gray-900">Connected</span>
           </div>
 
           {connectedProviders.includes('google') && (
             <>
-              <Separator />
+              <div className="border-t border-gray-200" />
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">G</span>
+                  <div className="w-5 h-5 bg-gray-900 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[10px] font-semibold">G</span>
                   </div>
                   <div>
-                    <h4 className="font-medium">Google</h4>
-                    <p className="text-sm text-gray-600">Connected</p>
+                    <h4 className="text-sm font-medium text-gray-900">Google</h4>
+                    <p className="text-[13px] text-gray-500">Connected</p>
                   </div>
                 </div>
-                <span className="text-sm text-green-600">Connected</span>
+                <span className="text-[12px] font-medium text-gray-900">Connected</span>
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="bg-white border-red-200">
-        <CardHeader>
-          <CardTitle className="text-red-600">Danger Zone</CardTitle>
-          <CardDescription>
-            Irreversible and destructive actions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">Delete Account</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your
-                  account and remove your data from our servers.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
-                  Delete Account
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
+      {/* Danger Zone */}
+      <div className="border border-gray-200 rounded-xl p-8 bg-white">
+        <h3 className="text-xl font-semibold tracking-[-0.01em] text-gray-900 mb-1">Danger Zone</h3>
+        <p className="text-[13px] text-gray-500 mb-6">Irreversible and destructive actions</p>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">Delete Account</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your
+                account and remove your data from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
+                Delete Account
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   )
 }

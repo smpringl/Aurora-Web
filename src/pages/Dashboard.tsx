@@ -23,13 +23,11 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<Tab>(getTabFromHash)
 
-  // Sync tab to URL hash
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
     window.location.hash = tab
   }
 
-  // Listen for browser back/forward navigation
   useEffect(() => {
     const onHashChange = () => setActiveTab(getTabFromHash())
     window.addEventListener('hashchange', onHashChange)
@@ -44,16 +42,16 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-black mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black mx-auto"></div>
+          <p className="mt-4 text-[13px] text-gray-500">Loading...</p>
           <button
             onClick={() => {
               localStorage.removeItem('sb-kfuuqxmaihlwhzfibhvj-auth-token')
               window.location.href = '/auth?mode=signin'
             }}
-            className="mt-6 text-sm text-detail-gray hover:text-primary-black underline"
+            className="mt-6 text-[13px] text-gray-400 hover:text-black underline"
           >
             Sign out
           </button>
