@@ -1,21 +1,21 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { GitBranch, Code, Infinity, ArrowRight } from 'lucide-react';
+import { GitBranch, Code, Infinity, ArrowRight, ArrowUpRight } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 // Company emissions data (real reported data from Aurora DB)
 const COMPANIES = [
-  { name: 'Apple', logo: '/logos/apple.png', total: 15279000, s1: 55200, s2: 3300, s2_basis: 'market-based', s3: 15106833 },
-  { name: 'Nike', logo: '/logos/nike.png', total: 8266474, s1: 57390, s2: 12120, s2_basis: 'market-based', s3: 8196965 },
-  { name: 'Microsoft', logo: '/logos/microsoft.png', total: 29800000, s1: 289000, s2: 521000, s2_basis: 'market-based', s3: 28829000 },
-  { name: 'Walmart', logo: '/logos/walmart.png', total: 652210000, s1: 9030000, s2: 6610000, s2_basis: 'market-based', s3: 636570000 },
   { name: 'Google', logo: '/logos/google.png', total: 11523600, s1: 73100, s2: 3059100, s2_basis: 'market-based', s3: 8400000 },
+  { name: 'Microsoft', logo: '/logos/microsoft.png', total: 29800000, s1: 289000, s2: 521000, s2_basis: 'market-based', s3: 28829000 },
   { name: 'Starbucks', logo: '/logos/starbucks.png', total: 13254841, s1: 395666, s2: 319058, s2_basis: 'market-based', s3: 12540117 },
+  { name: 'McDonald\'s', logo: '/logos/mcdonalds.png', total: 60457705, s1: 94233, s2: 118334, s2_basis: 'market-based', s3: 60245138 },
+  { name: 'Apple', logo: '/logos/apple.png', total: 15279000, s1: 55200, s2: 3300, s2_basis: 'market-based', s3: 15106833 },
+  { name: 'Walmart', logo: '/logos/walmart.png', total: 652210000, s1: 9030000, s2: 6610000, s2_basis: 'market-based', s3: 636570000 },
   { name: 'Meta', logo: '/logos/meta.png', total: 8200595, s1: 47468, s2: 1358, s2_basis: 'market-based', s3: 8151769 },
   { name: 'Toyota', logo: '/logos/toyota.png', total: 592890000, s1: 2560000, s2: 2870000, s2_basis: 'market-based', s3: 587460000 },
-  { name: "McDonald's", logo: '/logos/mcdonalds.png', total: 60457705, s1: 94233, s2: 118334, s2_basis: 'market-based', s3: 60245138 },
+  { name: 'Nike', logo: '/logos/nike.png', total: 8266474, s1: 57390, s2: 12120, s2_basis: 'market-based', s3: 8196965 },
 ];
 
 // Count-up hook
@@ -162,7 +162,18 @@ const Index = () => {
     return () => clearTimeout(initDelay);
   }, [hasAnimated]);
 
-  const animatedDataPoints = useCountUp(dataPoints, 1200, hasAnimated);
+  const initialDataPoints = useCountUp(calculateCurrentDataPoints(), 1200, hasAnimated);
+  const liveDataPoints = useAnimatedValue(hasAnimated ? dataPoints : 0, 800);
+  const [initialCountDone, setInitialCountDone] = useState(false);
+
+  useEffect(() => {
+    if (hasAnimated && !initialCountDone) {
+      const timer = setTimeout(() => setInitialCountDone(true), 1300);
+      return () => clearTimeout(timer);
+    }
+  }, [hasAnimated, initialCountDone]);
+
+  const animatedDataPoints = initialCountDone ? liveDataPoints : initialDataPoints;
   const animatedProfiles = useCountUp(12, 1200, hasAnimated);
   const formatNumber = useCallback((num: number) => num.toLocaleString(), []);
 
@@ -235,7 +246,7 @@ const Index = () => {
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-mono text-gray-400">2024</span>
-                      <span className="text-[10px] font-medium uppercase tracking-[0.06em] bg-gray-100 text-gray-600 rounded-full px-2.5 py-0.5">
+                      <span className="text-[10px] font-medium uppercase tracking-[0.06em] rounded-full px-2.5 py-0.5 text-black" style={{ backgroundColor: '#B3FD00' }}>
                         reported
                       </span>
                     </div>
@@ -288,7 +299,9 @@ const Index = () => {
           {/* VALUE PROPS — 3-col grid within the row */}
           <div className="grid md:grid-cols-3 gap-px" id="solutions">
             <div className="bg-white p-8">
-              <GitBranch className="text-black mb-5" size={24} strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: '#B3FD00' }}>
+                <GitBranch className="text-black" size={20} strokeWidth={1.5} />
+              </div>
               <h3 className="text-lg font-semibold tracking-[-0.01em] mb-2 text-gray-900">
                 Go-to-Market Enrichment
               </h3>
@@ -297,7 +310,9 @@ const Index = () => {
               </p>
             </div>
             <div className="bg-white p-8">
-              <Code className="text-black mb-5" size={24} strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: '#B3FD00' }}>
+                <Code className="text-black" size={20} strokeWidth={1.5} />
+              </div>
               <h3 className="text-lg font-semibold tracking-[-0.01em] mb-2 text-gray-900">
                 Analysis & Market Research
               </h3>
@@ -306,7 +321,9 @@ const Index = () => {
               </p>
             </div>
             <div className="bg-white p-8">
-              <Infinity className="text-black mb-5" size={24} strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: '#B3FD00' }}>
+                <Infinity className="text-black" size={20} strokeWidth={1.5} />
+              </div>
               <h3 className="text-lg font-semibold tracking-[-0.01em] mb-2 text-gray-900">
                 Core Insights & Custom Applications
               </h3>
@@ -319,25 +336,34 @@ const Index = () => {
           {/* INTEGRATIONS */}
           <div className="bg-white p-8 md:p-10" id="integrations">
             <div className="section-label mb-5">Integrations</div>
-            <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-[-0.02em] leading-[1.2] mb-4 text-gray-900">
-                Send climate data where it works best
-              </h2>
-              <p className="text-sm text-gray-500 leading-relaxed mb-8 max-w-lg mx-auto">
-                Connect Aurora with flows in n8n, Clay, Zapier and more to enrich leads with critical emissions data points.
-              </p>
-              <div className="flex justify-center gap-4">
-                <div className="border border-gray-200 rounded-lg flex items-center justify-center p-4 h-16 w-28">
-                  <img src="/clay_gs.png" alt="Clay" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="border border-gray-200 rounded-lg flex items-center justify-center p-4 h-16 w-28">
-                  <img src="/n8n_gs.png" alt="n8n" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="border border-gray-200 rounded-lg flex items-center justify-center p-4 h-16 w-28">
-                  <img src="/zapier_gs.png" alt="Zapier" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="border border-gray-200 rounded-lg flex items-center justify-center p-4 h-16 w-28">
-                  <img src="/make_gs.png" alt="Make" className="max-w-full max-h-full object-contain" />
+            <div className="grid md:grid-cols-[3fr_2fr] md:items-center gap-8 md:gap-12">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-semibold tracking-[-0.02em] leading-[1.2] mb-4 text-gray-900">
+                  <span className="underline decoration-2 underline-offset-4" style={{ textDecorationColor: '#B3FD00' }}>Send climate data</span> where it works best
+                </h2>
+                <p className="text-sm text-gray-500 leading-relaxed max-w-md mb-5">
+                  Connect Aurora with flows in n8n, Clay, Zapier and more to enrich leads with critical emissions data points.
+                </p>
+                <Button variant="outline" className="border-gray-300 text-gray-600 hover:text-black hover:border-black rounded-full px-6 py-2.5 h-auto text-sm font-medium bg-white" asChild>
+                  <Link to="/docs">
+                    API Docs <ArrowUpRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+              <div className="flex justify-start">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-gray-200 rounded-lg flex items-center justify-center p-5 h-20 w-36">
+                    <img src="/clay_gs.png" alt="Clay" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="border border-gray-200 rounded-lg flex items-center justify-center p-5 h-20 w-36">
+                    <img src="/n8n_gs.png" alt="n8n" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="border border-gray-200 rounded-lg flex items-center justify-center p-5 h-20 w-36">
+                    <img src="/zapier_gs.png" alt="Zapier" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="border border-gray-200 rounded-lg flex items-center justify-center p-5 h-20 w-36">
+                    <img src="/make_gs.png" alt="Make" className="max-w-full max-h-full object-contain" />
+                  </div>
                 </div>
               </div>
             </div>
