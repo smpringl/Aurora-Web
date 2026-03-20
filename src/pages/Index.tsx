@@ -198,7 +198,7 @@ const Index = () => {
                 <Link to="/auth">Get Started</Link>
               </Button>
               <Button variant="outline" className="border-gray-300 text-gray-600 hover:text-black hover:border-black rounded-full px-8 py-3 h-auto text-base font-medium bg-white" asChild>
-                <Link to="/pricing">See Pricing</Link>
+                <Link to="/pricing">See Pricing <ArrowUpRight className="w-4 h-4 ml-1" /></Link>
               </Button>
             </div>
           </div>
@@ -389,19 +389,52 @@ const Index = () => {
             </div>
           </div>
 
-          {/* TRUSTED BY */}
-          <div className="bg-white px-8 md:px-10 py-10 text-center">
-            <div className="section-label justify-center mb-6">Trusted By</div>
-            <p className="text-sm text-gray-500 mb-8 max-w-lg mx-auto">
-              Built by researchers with deep domain experience and cross-industry exposure
-            </p>
-            <div className="flex flex-wrap justify-center items-center gap-10 md:gap-14">
-              <span className="text-xl font-semibold text-gray-300 tracking-tight">recapture</span>
-              <span className="text-xl font-semibold text-gray-300 tracking-tight">Yale</span>
-              <span className="w-8 h-8 bg-gray-200 rounded-full"></span>
-              <span className="text-xl font-semibold text-gray-300 tracking-tight">devon</span>
+          {/* Spacer */}
+          <div className="bg-white h-[60px]" />
+
+          {/* BACKED BY EXPERIENCE — logo scroller */}
+          <div className="bg-white flex items-stretch overflow-hidden">
+            {/* Left label */}
+            <div className="flex-shrink-0 px-8 md:px-10 py-8 border-r border-gray-200 flex flex-col justify-center">
+              <div className="section-label mb-3">Backed by Experience</div>
+              <p className="text-sm text-gray-500 leading-relaxed max-w-[200px]">
+                Built by researchers with deep domain experience and cross-industry exposure
+              </p>
+            </div>
+
+            {/* Scrolling logos */}
+            <div className="flex-1 overflow-hidden relative flex items-stretch">
+              <div className="flex animate-scroll-logos items-stretch">
+                {[...Array(2)].map((_, setIdx) => (
+                  <div key={setIdx} className="flex items-stretch flex-shrink-0">
+                    {[
+                      { src: '/logos/bcg.png', alt: 'BCG' },
+                      { src: '/logos/yale.png', alt: 'Yale' },
+                      { src: '/logos/marvell.png', alt: 'Marvell' },
+                      { src: '/logos/virgin.png', alt: 'Virgin' },
+                      { src: '/logos/xprize.svg', alt: 'XPRIZE' },
+                      { src: '/logos/bcg.png', alt: 'BCG' },
+                      { src: '/logos/yale.png', alt: 'Yale' },
+                      { src: '/logos/marvell.png', alt: 'Marvell' },
+                      { src: '/logos/virgin.png', alt: 'Virgin' },
+                      { src: '/logos/xprize.svg', alt: 'XPRIZE' },
+                    ].map((logo, i) => (
+                      <div key={`${setIdx}-${i}`} className="flex items-center justify-center w-48 flex-shrink-0 border-r border-gray-200">
+                        <img
+                          src={logo.src}
+                          alt={logo.alt}
+                          className={`${logo.alt === 'Virgin' ? 'h-[40px]' : logo.alt === 'BCG' ? 'h-[40px]' : logo.alt === 'Yale' ? 'h-[25px]' : logo.alt === 'Marvell' ? 'h-[25px]' : 'h-5'} object-contain ${logo.alt === 'XPRIZE' ? 'grayscale' : 'grayscale brightness-0'}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Spacer */}
+          <div className="bg-white h-[60px]" />
 
           {/* CTA */}
           <div className="bg-white px-8 md:px-10 py-10 flex flex-col md:flex-row items-center justify-between gap-6">

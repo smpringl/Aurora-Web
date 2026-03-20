@@ -1,10 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    if (isHome) {
+      e.preventDefault();
+      const el = document.querySelector(hash);
+      if (el) {
+        const headerHeight = 64;
+        const top = el.getBoundingClientRect().top + window.scrollY - headerHeight;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    }
+    setIsMenuOpen(false);
+  };
 
   return (
     <header className="w-full bg-white fixed top-0 z-50">
@@ -23,14 +38,33 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#solutions" className="text-sm font-medium text-gray-500 hover:text-black transition-colors">
-              Solutions
-            </a>
-            <a href="#integrations" className="text-sm font-medium text-gray-500 hover:text-black transition-colors">
-              Integrations
-            </a>
+            {isHome ? (
+              <>
+                <a
+                  href="#solutions"
+                  onClick={(e) => handleAnchorClick(e, "#solutions")}
+                  className="text-sm font-medium text-gray-500 hover:text-black transition-colors"
+                >
+                  Solutions
+                </a>
+                <a
+                  href="#integrations"
+                  onClick={(e) => handleAnchorClick(e, "#integrations")}
+                  className="text-sm font-medium text-gray-500 hover:text-black transition-colors"
+                >
+                  Integrations
+                </a>
+              </>
+            ) : (
+              <Link to="/" className="text-sm font-medium text-gray-500 hover:text-black transition-colors">
+                Home
+              </Link>
+            )}
             <Link to="/pricing" className="text-sm font-medium text-gray-500 hover:text-black transition-colors">
               Pricing
+            </Link>
+            <Link to="/docs" className="text-sm font-medium text-gray-500 hover:text-black transition-colors">
+              Docs
             </Link>
           </nav>
 
@@ -57,26 +91,45 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-200">
             <nav className="flex flex-col space-y-3">
-              <a
-                href="#solutions"
-                className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Solutions
-              </a>
-              <a
-                href="#integrations"
-                className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Integrations
-              </a>
+              {isHome ? (
+                <>
+                  <a
+                    href="#solutions"
+                    className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
+                    onClick={(e) => handleAnchorClick(e, "#solutions")}
+                  >
+                    Solutions
+                  </a>
+                  <a
+                    href="#integrations"
+                    className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
+                    onClick={(e) => handleAnchorClick(e, "#integrations")}
+                  >
+                    Integrations
+                  </a>
+                </>
+              ) : (
+                <Link
+                  to="/"
+                  className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Home
+                </Link>
+              )}
               <Link
                 to="/pricing"
                 className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Pricing
+              </Link>
+              <Link
+                to="/docs"
+                className="text-sm font-medium text-gray-500 hover:text-black transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Docs
               </Link>
               <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
                 <Button variant="ghost" className="w-full justify-start font-medium text-gray-500 hover:text-black hover:bg-transparent" asChild>
