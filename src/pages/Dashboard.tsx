@@ -8,10 +8,12 @@ import ActivityLogs from '@/components/ActivityLogs'
 import Usage from '@/components/Usage'
 import AccountSettings from '@/components/AccountSettings'
 import ApiKeyManagement from '@/components/ApiKeyManagement'
+import DashboardDocs from '@/components/DashboardDocs'
+import Billing from '@/components/Billing'
 
-type Tab = 'overview' | 'playground' | 'activity-logs' | 'usage' | 'api-key' | 'settings'
+type Tab = 'overview' | 'playground' | 'activity-logs' | 'usage' | 'billing' | 'api-key' | 'docs' | 'settings'
 
-const VALID_TABS: Tab[] = ['overview', 'playground', 'activity-logs', 'usage', 'api-key', 'settings']
+const VALID_TABS: Tab[] = ['overview', 'playground', 'activity-logs', 'usage', 'billing', 'api-key', 'docs', 'settings']
 
 function getTabFromHash(): Tab {
   const hash = window.location.hash.replace('#', '')
@@ -70,7 +72,9 @@ const Dashboard = () => {
       {activeTab === 'playground' && <Playground />}
       {activeTab === 'activity-logs' && <ActivityLogs />}
       {activeTab === 'usage' && <Usage />}
+      {activeTab === 'billing' && <Billing />}
       {activeTab === 'api-key' && <ApiKeyManagement />}
+      {activeTab === 'docs' && <DashboardDocs />}
       {activeTab === 'settings' && <AccountSettings />}
     </DashboardLayout>
   )

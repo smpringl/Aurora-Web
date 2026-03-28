@@ -1,20 +1,20 @@
 import { ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Home, Play, List, BarChart3, Key, Settings, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutGrid, Play, Menu, Gauge, CreditCard, KeyRound, Layers, Settings, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 
 interface DashboardLayoutProps {
   children: ReactNode
-  activeTab: 'overview' | 'playground' | 'activity-logs' | 'usage' | 'api-key' | 'settings'
-  onTabChange: (tab: 'overview' | 'playground' | 'activity-logs' | 'usage' | 'api-key' | 'settings') => void
+  activeTab: 'overview' | 'playground' | 'activity-logs' | 'usage' | 'billing' | 'api-key' | 'docs' | 'settings'
+  onTabChange: (tab: 'overview' | 'playground' | 'activity-logs' | 'usage' | 'billing' | 'api-key' | 'docs' | 'settings') => void
 }
 
 const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
-  const handleTabClick = (tab: 'overview' | 'playground' | 'activity-logs' | 'usage' | 'api-key' | 'settings') => {
+  const handleTabClick = (tab: 'overview' | 'playground' | 'activity-logs' | 'usage' | 'billing' | 'api-key' | 'docs' | 'settings') => {
     if (!isSidebarOpen) {
       setIsSidebarOpen(true)
     }
@@ -28,14 +28,16 @@ const DashboardLayout = ({ children, activeTab, onTabChange }: DashboardLayoutPr
   }
 
   const navItems: { id: typeof activeTab; label: string; icon: typeof Home }[] = [
-    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'overview', label: 'Overview', icon: LayoutGrid },
     { id: 'playground', label: 'Playground', icon: Play },
   ]
 
   const navItems2: { id: typeof activeTab; label: string; icon: typeof Home }[] = [
-    { id: 'activity-logs', label: 'Activity Logs', icon: List },
-    { id: 'usage', label: 'Usage', icon: BarChart3 },
-    { id: 'api-key', label: 'API Key', icon: Key },
+    { id: 'activity-logs', label: 'Activity Logs', icon: Menu },
+    { id: 'usage', label: 'Usage', icon: Gauge },
+    { id: 'billing', label: 'Billing', icon: CreditCard },
+    { id: 'api-key', label: 'API Key', icon: KeyRound },
+    { id: 'docs', label: 'API Docs', icon: Layers },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
