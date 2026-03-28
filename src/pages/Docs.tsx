@@ -92,7 +92,7 @@ const estimatedResponse = `{
 
 const noDataResponse = `{
   "status": "data_not_available",
-  "reason": "Insufficient data to estimate emissions. Processing has been initiated — data may be available on retry."
+  "reason": "Emissions data is not currently available for this company."
 }`;
 
 const errorResponses = `// 401 — Invalid or missing API key

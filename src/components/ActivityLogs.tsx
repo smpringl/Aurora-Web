@@ -39,7 +39,7 @@ function saveCache(data: ApiRequest[]) {
 }
 
 const statusLabels: Record<string, string> = {
-  succeeded: 'COMPLETED',
+  succeeded: 'SUCCESS',
   failed: 'FAILED',
   authorized: 'AUTHORIZED',
   received: 'RECEIVED',
@@ -195,7 +195,7 @@ function RequestDetail({ request }: { request: ApiRequest }) {
 }
 
 const ActivityLogs = () => {
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
 
   const cached = useRef(loadCache())
   const [requests, setRequests] = useState<ApiRequest[]>(cached.current || [])
@@ -224,7 +224,8 @@ const ActivityLogs = () => {
 
   const userId = user?.id
   useEffect(() => {
-    if (!userId) {
+    if (!sessionReady || !userId) {
+      if (!sessionReady) return
       setInitialLoad(false)
       return
     }
@@ -242,6 +243,7 @@ const ActivityLogs = () => {
         let query = supabase
           .from('api_requests')
           .select('id, received_at, domain, status, http_status, duration_ms, method, endpoint, error_message')
+          .eq('endpoint', '/v1/ghg/latest')
           .abortSignal(controller.signal)
 
         if (debouncedSearch.trim()) {
@@ -302,7 +304,7 @@ const ActivityLogs = () => {
 
     doFetch()
     return () => controller.abort()
-  }, [userId, page, debouncedSearch, statusFilter, dateRange])
+  }, [sessionReady, userId, page, debouncedSearch, statusFilter, dateRange])
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => prev === id ? null : id)
@@ -442,8 +444,18 @@ const ActivityLogs = () => {
                       <div className="text-gray-900 text-[13px] truncate" title={req.domain || '--'}>
                         {req.domain || '--'}
                       </div>
-                      <div className={`text-[12px] font-semibold ${isCompleted ? 'text-black' : 'text-gray-400'}`}>
-                        {statusLabel}
+                      <div className="inline-flex items-center gap-1.5">
+                        {isCompleted ? (
+                          <>
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#B3FD00' }}></span>
+                            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-black">{statusLabel}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-black">{statusLabel}</span>
+                          </>
+                        )}
                       </div>
                       <div className="text-gray-500 font-mono text-[12px]">
                         {formatDuration(req.duration_ms)}

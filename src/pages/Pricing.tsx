@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, Mail, ShieldCheck, Square, LayoutGrid, Globe } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Pricing = () => {
+  const { user } = useAuth();
+  const ctaLink = user ? '/dashboard#billing' : '/auth';
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -60,7 +63,7 @@ const Pricing = () => {
               </ul>
 
               <Button variant="outline" className="w-full border-gray-300 text-gray-600 hover:text-black hover:border-black font-medium rounded-lg bg-white" asChild>
-                <Link to="/auth">Get Started</Link>
+                <Link to={ctaLink}>Get Started</Link>
               </Button>
             </div>
 
@@ -107,7 +110,7 @@ const Pricing = () => {
               </ul>
 
               <Button className="w-full bg-black text-white hover:bg-gray-800 font-medium rounded-lg" asChild>
-                <Link to="/auth">
+                <Link to={ctaLink}>
                   Get Started
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
@@ -267,7 +270,7 @@ const Pricing = () => {
             </div>
             <div className="flex gap-3 shrink-0">
               <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-7 py-2.5 h-auto text-sm font-medium" asChild>
-                <Link to="/auth">
+                <Link to={ctaLink}>
                   Get Started
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>

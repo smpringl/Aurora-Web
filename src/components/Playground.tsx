@@ -3,9 +3,143 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Play, Globe, Loader2, Clock, Copy, Check, AlertCircle, ExternalLink } from 'lucide-react'
+import { Play, Globe, Loader2, Clock, Copy, Check, AlertCircle, ExternalLink, X } from 'lucide-react'
 
 const API_URL = 'https://api.auroracarbon.com/v1/ghg/latest'
+const CREDITS_PER_LOOKUP = 3
+
+interface RecentRow {
+  id: string
+  received_at: string
+  status: string
+  domain: string | null
+}
+
+function formatDomain(domain: string | null): string {
+  if (!domain) return 'unknown'
+  return domain.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '')
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// ── Results Modal ──────────────────────────────────────────────
+
+function ResultsModal({ call, onClose }: { call: RecentRow; onClose: () => void }) {
+  const [responseData, setResponseData] = useState<Record<string, unknown> | null>(null)
+  const [modalLoading, setModalLoading] = useState(true)
+
+  useEffect(() => {
+    if (call.status !== 'succeeded' || !call.domain) {
+      const errorResponses: Record<string, { status: string; reason: string }> = {
+        failed: { status: 'data_not_available', reason: 'Emissions data is not currently available for this company.' },
+        rejected: { status: 'unauthorized', reason: 'Invalid or missing API key.' },
+      }
+      const info = errorResponses[call.status] || { status: 'error', reason: `Request ended with status: ${call.status}` }
+      setResponseData(info)
+      setModalLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const fetchDetail = async () => {
+      try {
+        const { data: domainRow } = await supabase
+          .from('company_domains')
+          .select('company_id, companies(name)')
+          .eq('domain', call.domain!)
+          .limit(1)
+          .single()
+          .abortSignal(controller.signal)
+
+        if (domainRow?.company_id) {
+          const company = domainRow.companies as unknown as { name: string } | null
+          const { data: emissions } = await supabase
+            .from('emissions_annual')
+            .select('year, total_emissions_tco2e, scope1_emissions_tco2e, scope2_emissions_tco2e, scope3_emissions_tco2e, scope2_methodology, total_methodology')
+            .eq('company_id', domainRow.company_id)
+            .order('year', { ascending: false })
+            .limit(1)
+            .single()
+            .abortSignal(controller.signal)
+
+          if (emissions) {
+            const scope2Basis = emissions.scope2_methodology === 'reported'
+              ? 'market-based' : emissions.scope2_methodology === 'estimated'
+              ? 'location-based' : null
+
+            setResponseData({
+              status: 'ok',
+              company: company?.name || call.domain,
+              year: emissions.year,
+              methodology: emissions.total_methodology,
+              total_emissions_tco2e: Math.round(Number(emissions.total_emissions_tco2e)),
+              ...(emissions.scope1_emissions_tco2e != null && { scope1_emissions_tco2e: Math.round(Number(emissions.scope1_emissions_tco2e)) }),
+              ...(emissions.scope2_emissions_tco2e != null && { scope2_emissions_tco2e: Math.round(Number(emissions.scope2_emissions_tco2e)) }),
+              ...(scope2Basis && { scope2_basis: scope2Basis }),
+              ...(emissions.scope3_emissions_tco2e != null && { scope3_emissions_tco2e: Math.round(Number(emissions.scope3_emissions_tco2e)) }),
+            })
+          } else {
+            setResponseData({ status: 'data_not_available', reason: 'No emissions data found.' })
+          }
+        } else {
+          setResponseData({ status: 'data_not_available', reason: 'Company not found.' })
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setResponseData({ status: 'error', reason: 'Failed to load results.' })
+      } finally {
+        setModalLoading(false)
+      }
+    }
+
+    fetchDetail()
+    return () => controller.abort()
+  }, [call])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative bg-white rounded-xl border border-gray-200 w-full max-w-lg mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h3 className="text-[14px] font-medium text-gray-900">API Response</h3>
+            <p className="text-[12px] text-gray-400 mt-0.5">
+              {formatDomain(call.domain)} · {new Date(call.received_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-black transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-6">
+          {modalLoading ? (
+            <div className="space-y-2">
+              <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+              <div className="h-3 bg-gray-100 rounded animate-pulse w-2/3" />
+              <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+            </div>
+          ) : (
+            <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 overflow-x-auto text-gray-900 max-h-[400px] overflow-y-auto">
+              {JSON.stringify(responseData, null, 2)}
+            </pre>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 interface ApiResponse {
   status: string
@@ -22,7 +156,7 @@ interface ApiResponse {
 }
 
 const Playground = () => {
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [keyLoading, setKeyLoading] = useState(true)
   const [domain, setDomain] = useState('')
@@ -35,9 +169,14 @@ const Playground = () => {
   const startRef = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
+  const [recentRows, setRecentRows] = useState<RecentRow[]>([])
+  const [recentLoading, setRecentLoading] = useState(true)
+  const [selectedCall, setSelectedCall] = useState<RecentRow | null>(null)
+
   const userId = user?.id
   useEffect(() => {
-    if (!userId) {
+    if (!sessionReady || !userId) {
+      if (!sessionReady) return
       setKeyLoading(false)
       return
     }
@@ -52,7 +191,32 @@ const Playground = () => {
         setKeyLoading(false)
       })
       .catch(() => setKeyLoading(false))
-  }, [userId])
+  }, [sessionReady, userId])
+
+  const fetchRecent = () => {
+    if (!userId) {
+      setRecentLoading(false)
+      return
+    }
+    supabase
+      .from('api_requests')
+      .select('id, received_at, status, domain')
+      .eq('endpoint', '/v1/ghg/latest')
+      .in('status', ['succeeded', 'failed', 'rejected'])
+      .order('received_at', { ascending: false })
+      .limit(25)
+      .then(({ data, error }) => {
+        if (error) console.error('Recent calls fetch error:', error)
+        if (data) setRecentRows(data)
+        setRecentLoading(false)
+      })
+      .catch(() => setRecentLoading(false))
+  }
+
+  useEffect(() => {
+    if (!sessionReady) return
+    fetchRecent()
+  }, [sessionReady, userId])
 
   useEffect(() => {
     return () => {
@@ -108,6 +272,8 @@ const Playground = () => {
       if (timerRef.current) clearInterval(timerRef.current)
       setElapsedMs(Date.now() - startRef.current)
       setLoading(false)
+      // Refresh recent calls after a short delay for the log to be written
+      setTimeout(fetchRecent, 1500)
     }
   }
 
@@ -132,7 +298,7 @@ const Playground = () => {
   const canSubmit = !!apiKey && domain.trim().length > 0 && !loading
 
   return (
-    <div className="space-y-0">
+    <div>
       {/* Header */}
       <div className="pb-8">
         <h1 className="text-[36px] font-semibold tracking-[-0.02em] leading-[1.2] text-gray-900">
@@ -163,12 +329,13 @@ const Playground = () => {
 
       {/* Query section */}
       <div className="border border-gray-200 rounded-xl p-6 bg-white">
-        <div className="flex items-center gap-2 mb-3">
-          <Globe className="w-4 h-4 text-gray-400" />
-          <span className="text-[13px] font-medium text-gray-900">
-            POST /v1/ghg/latest
-          </span>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-[15px] font-semibold text-gray-900">Emissions Lookup</h2>
+          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-black px-2.5 py-0.5 rounded-full" style={{ backgroundColor: '#B3FD00' }}>3 credits</span>
         </div>
+        <p className="text-[13px] text-gray-500 mb-4">
+          Enter a company's domain to retrieve their most recent greenhouse gas emissions data.
+        </p>
 
         <div className="flex gap-3">
           <Input
@@ -268,6 +435,87 @@ const Playground = () => {
           </div>
         )}
       </div>
+
+      {/* ── Recent Lookups ── */}
+      <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mt-12">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-[13px] font-medium text-gray-900">Recent Lookups</h2>
+          <p className="text-[12px] text-gray-400 mt-0.5">All recent API calls and credits charged</p>
+        </div>
+
+        {recentLoading ? (
+          <div className="p-6">
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="h-10 bg-gray-50 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+        ) : recentRows.length === 0 ? (
+          <div className="p-12 text-center text-sm text-gray-500">
+            No API calls yet — try running a query above
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-[1fr_100px_100px_100px_60px] px-6 py-2.5 border-b border-gray-100 bg-gray-50/50">
+              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-[0.05em]">Domain</span>
+              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-[0.05em] text-right">Status</span>
+              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-[0.05em] text-right">Credits</span>
+              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-[0.05em] text-right">Time</span>
+              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-[0.05em] text-right">Results</span>
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              {recentRows.map((row) => {
+                const credits = row.status === 'succeeded' ? CREDITS_PER_LOOKUP : 0
+                return (
+                  <div
+                    key={row.id}
+                    className="grid grid-cols-[1fr_100px_100px_100px_60px] px-6 py-3 hover:bg-gray-50/50 transition-colors"
+                  >
+                    <span className="text-[13px] text-gray-900 font-medium truncate pr-4">
+                      {formatDomain(row.domain)}
+                    </span>
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      {row.status === 'succeeded' ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#B3FD00' }}></span>
+                          <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-black">Success</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                          <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-black">Failed</span>
+                        </>
+                      )}
+                    </span>
+                    <span className="text-[13px] font-mono text-gray-900 text-right">
+                      {credits > 0 ? <span>-{credits}</span> : <span className="text-gray-300">0</span>}
+                    </span>
+                    <span className="text-[12px] text-gray-400 text-right">
+                      {timeAgo(row.received_at)}
+                    </span>
+                    <span className="text-right">
+                      <button
+                        onClick={() => setSelectedCall(row)}
+                        className="text-gray-400 hover:text-black transition-colors"
+                        title="View results"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 inline" />
+                      </button>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Results modal */}
+      {selectedCall && (
+        <ResultsModal call={selectedCall} onClose={() => setSelectedCall(null)} />
+      )}
     </div>
   )
 }

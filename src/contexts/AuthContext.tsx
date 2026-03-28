@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  sessionReady: boolean
   signOut: () => void
 }
 
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  sessionReady: false,
   signOut: () => {}
 })
 
@@ -24,9 +26,6 @@ export const useAuth = () => {
   return context
 }
 
-// Read the cached Supabase session from localStorage synchronously.
-// If it exists, we can render the dashboard immediately instead of showing
-// a loading screen while getSession() makes a network call.
 function getCachedUser(): User | null {
   try {
     const raw = localStorage.getItem('sb-kfuuqxmaihlwhzfibhvj-auth-token')
@@ -42,63 +41,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const cachedUser = useRef(getCachedUser())
   const [user, setUser] = useState<User | null>(cachedUser.current)
   const [session, setSession] = useState<Session | null>(null)
-  // Skip the loading screen entirely if we have a cached session
   const [loading, setLoading] = useState(!cachedUser.current)
+  const [sessionReady, setSessionReady] = useState(false)
   const initializedRef = useRef(false)
 
   useEffect(() => {
+    // Mark session ready as soon as we get ANY auth event with a session.
+    // Profile upsert is fire-and-forget — never blocks state updates.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // Ignore INITIAL_SESSION — let getSession() handle initial auth
-        if (event === 'INITIAL_SESSION') return
+      (event, newSession) => {
+        console.log('[Auth]', event, 'session?', !!newSession, 'initialized?', initializedRef.current)
 
-        setSession(session)
-        setUser(session?.user ?? null)
+        setSession(newSession)
+        setUser(prev => {
+          const newUser = newSession?.user ?? null
+          if (prev?.id === newUser?.id) return prev
+          return newUser
+        })
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            await supabase
-              .from('profiles')
-              .upsert({
-                user_id: session.user.id,
-                email: session.user.email || ''
-              })
-          } catch (error) {
-            console.error('Error upserting profile:', error)
-          }
+        if (!initializedRef.current && newSession) {
+          initializedRef.current = true
+          setSessionReady(true)
+          setLoading(false)
+        }
+
+        // Fire-and-forget profile upsert on sign in (not awaited)
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          supabase
+            .from('profiles')
+            .upsert({
+              user_id: newSession.user.id,
+              email: newSession.user.email || ''
+            })
+            .then(null, (err: unknown) => console.error('Error upserting profile:', err))
         }
 
         if (event === 'SIGNED_OUT') {
+          setSessionReady(false)
           window.location.href = '/auth?mode=signin'
         }
       }
     )
 
-    // Refresh the session in the background
+    // Safety timeout — if no auth event fires within 3 seconds, proceed anyway
     const timeout = setTimeout(() => {
       if (!initializedRef.current) {
+        console.warn('[Auth] Timeout — no auth event received, proceeding without session')
         initializedRef.current = true
+        setSessionReady(true)
         setLoading(false)
       }
-    }, 5000)
+    }, 3000)
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    return () => {
       clearTimeout(timeout)
-      if (!initializedRef.current) {
-        initializedRef.current = true
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    }).catch(() => {
-      clearTimeout(timeout)
-      if (!initializedRef.current) {
-        initializedRef.current = true
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signOut = () => {
@@ -107,8 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = '/auth?mode=signin'
   }
 
+  const value = useMemo(
+    () => ({ user, session, loading, sessionReady, signOut }),
+    [user, loading, sessionReady]
+  )
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )
