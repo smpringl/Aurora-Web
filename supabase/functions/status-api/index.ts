@@ -78,32 +78,37 @@ serve(async (req: Request) => {
       details: dbError ? dbError.message : undefined,
     }
 
-    // Check recent API error rate (last hour)
+    // Check if API is responding — look at recent requests
+    // "succeeded" and "failed" (data_not_available) are both healthy responses.
+    // Only "rejected" (auth) or missing http_status (crashes) indicate real problems.
     const hourAgo = new Date(Date.now() - 3600000).toISOString()
     const { data: recentRequests } = await db
       .from('api_requests')
-      .select('status')
+      .select('status, http_status, duration_ms')
       .eq('endpoint', '/v1/ghg/latest')
       .gte('received_at', hourAgo)
 
     const total = (recentRequests || []).length
-    const failed = (recentRequests || []).filter(r => r.status === 'failed' || r.status === 'rejected').length
-    const errorRate = total > 0 ? (failed / total) * 100 : 0
+    // System errors = requests that got a 500+ HTTP status (actual crashes)
+    const systemErrors = (recentRequests || []).filter(r => r.http_status != null && r.http_status >= 500).length
+    const systemErrorRate = total > 0 ? (systemErrors / total) * 100 : 0
 
-    // Overall API status based on error rate
+    // Average response time from successful requests
+    const durations = (recentRequests || []).filter(r => r.duration_ms != null && r.duration_ms > 0).map(r => r.duration_ms as number)
+    const avgLatency = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0
+
     const apiStatus: ServiceStatus = {
       name: 'Aurora API',
-      status: errorRate > 20 ? 'degraded' : 'operational',
-      latency_ms: 0,
+      status: systemErrorRate > 10 ? 'degraded' : 'operational',
+      latency_ms: avgLatency,
     }
 
-    // Public-facing services only
+    // Public-facing services
     const publicServices = [apiStatus, database]
 
-    // All services (including internal) for overall status computation
+    // All services (including internal) for overall status
     const allServices = [apiStatus, apiGateway, database, n8n, tika]
 
-    // Compute overall status from ALL services (internal issues affect overall)
     const hasDown = allServices.some(s => s.status === 'down')
     const hasDegraded = allServices.some(s => s.status === 'degraded')
     const overall = hasDown ? 'partial_outage' : hasDegraded ? 'degraded' : 'operational'
@@ -115,17 +120,18 @@ serve(async (req: Request) => {
       .order('created_at', { ascending: false })
       .limit(10)
 
-    // Uptime: compute from api_requests over last 30 days
+    // Uptime: % of requests that got a response (any HTTP status < 500)
+    // "succeeded" and "failed" (data_not_available) both count as UP
     const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString()
     const { data: monthRequests } = await db
       .from('api_requests')
-      .select('status')
+      .select('http_status')
       .eq('endpoint', '/v1/ghg/latest')
       .gte('received_at', monthAgo)
 
     const monthTotal = (monthRequests || []).length
-    const monthSucceeded = (monthRequests || []).filter(r => r.status === 'succeeded').length
-    const uptime30d = monthTotal > 0 ? ((monthSucceeded / monthTotal) * 100).toFixed(2) : '100.00'
+    const monthUp = (monthRequests || []).filter(r => r.http_status == null || r.http_status < 500).length
+    const uptime30d = monthTotal > 0 ? ((monthUp / monthTotal) * 100).toFixed(2) : '100.00'
 
     return json({
       overall,
