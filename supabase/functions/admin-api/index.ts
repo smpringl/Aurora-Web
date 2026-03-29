@@ -392,17 +392,17 @@ serve(async (req: Request) => {
           .order('created_at', { ascending: false })
           .limit(100)
 
-        // 3. Recent extractions — emissions rows updated in last 7 days
+        // 3. Recent extractions — only rows from actual n8n extraction (not edge function estimation)
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
         const { data: recentEmissions } = await db
           .from('emissions_annual')
-          .select('company_id, year, emissions_source, total_methodology, source_url, data_source, created_at, updated_at')
+          .select('company_id, year, emissions_source, total_methodology, source_url, data_source, total_emissions_tco2e, scope1_emissions_tco2e, scope2_emissions_tco2e, scope3_emissions_tco2e, created_at, updated_at')
+          .neq('emissions_source', 'ESTIMATED')
           .gte('updated_at', weekAgo)
           .order('updated_at', { ascending: false })
           .limit(50)
 
         // 4. Failed extractions — companies that were queried recently but still only have estimated data
-        //    (extraction ran but couldn't find/extract a report)
         const { data: failedExtractions } = await db
           .from('emissions_annual')
           .select('company_id, year, emissions_source, data_source, created_at, updated_at')
@@ -411,11 +411,19 @@ serve(async (req: Request) => {
           .order('created_at', { ascending: false })
           .limit(30)
 
-        // Get company names for locks, emissions, and failed extractions
+        // 5. Outlier-flagged emissions
+        const { data: outliers } = await db
+          .from('emissions_annual')
+          .select('company_id, year, total_emissions_tco2e, emissions_source, total_methodology, outlier_flag, outlier_reason, source_url, updated_at')
+          .eq('outlier_flag', true)
+          .order('updated_at', { ascending: false })
+
+        // Get company names for locks, emissions, failed extractions, and outliers
         const allCompanyIds = [
           ...(locks || []).map(l => l.company_id),
           ...(recentEmissions || []).map(e => e.company_id),
           ...(failedExtractions || []).map(e => e.company_id),
+          ...(outliers || []).map(e => e.company_id),
         ].filter(Boolean)
         const uniqueIds = [...new Set(allCompanyIds)]
 
@@ -469,6 +477,11 @@ serve(async (req: Request) => {
             // Check if also in manual queue
             in_manual_queue: (queue || []).some(q => q.company_id === e.company_id),
           })),
+          outliers: (outliers || []).map(e => ({
+            ...e,
+            company_name: nameMap[e.company_id] || e.company_id,
+            domain: domainMap[e.company_id] || null,
+          })),
           summary: {
             in_progress: (locks || []).length,
             pending_upload: (queue || []).filter(q => q.status === 'pending').length,
@@ -476,6 +489,7 @@ serve(async (req: Request) => {
             completed_7d: (recentEmissions || []).filter(e => e.emissions_source === 'REPORTED').length,
             estimated_7d: (recentEmissions || []).filter(e => e.emissions_source === 'ESTIMATED').length,
             failed_7d: (failedExtractions || []).length,
+            outliers: (outliers || []).length,
           },
         })
       }
