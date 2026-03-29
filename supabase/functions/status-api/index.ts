@@ -93,16 +93,19 @@ serve(async (req: Request) => {
     // Overall API status based on error rate
     const apiStatus: ServiceStatus = {
       name: 'Aurora API',
-      status: errorRate > 20 ? 'degraded' : total === 0 ? 'operational' : 'operational',
+      status: errorRate > 20 ? 'degraded' : 'operational',
       latency_ms: 0,
-      details: total > 0 ? `${total} requests/hr, ${errorRate.toFixed(1)}% error rate` : 'No recent traffic',
     }
 
-    const services = [apiStatus, apiGateway, database, n8n, tika]
+    // Public-facing services only
+    const publicServices = [apiStatus, database]
 
-    // Compute overall status
-    const hasDown = services.some(s => s.status === 'down')
-    const hasDegraded = services.some(s => s.status === 'degraded')
+    // All services (including internal) for overall status computation
+    const allServices = [apiStatus, apiGateway, database, n8n, tika]
+
+    // Compute overall status from ALL services (internal issues affect overall)
+    const hasDown = allServices.some(s => s.status === 'down')
+    const hasDegraded = allServices.some(s => s.status === 'degraded')
     const overall = hasDown ? 'partial_outage' : hasDegraded ? 'degraded' : 'operational'
 
     // Fetch recent incidents
@@ -126,7 +129,7 @@ serve(async (req: Request) => {
 
     return json({
       overall,
-      services,
+      services: publicServices,
       uptime_30d: parseFloat(uptime30d),
       incidents: incidents || [],
       checked_at: new Date().toISOString(),
