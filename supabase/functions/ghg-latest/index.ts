@@ -188,20 +188,36 @@ serve(async (req) => {
 
     const companyName = companyRow?.name ?? domain
 
-    // --- Cache check (prefer reported over estimated) ---
+    // --- Cache check: current year, then fall back to prior year ---
     const { data: cachedRows } = await supabase
       .from('emissions_annual')
       .select('*')
       .eq('company_id', companyId)
       .eq('year', emissions_year)
-      .order('emissions_source', { ascending: true }) // ESTIMATED < REPORTED alphabetically, but we want REPORTED first
       .limit(10)
 
-    // Pick best row: REPORTED > partially_reported > ESTIMATED
-    const cached = pickBestRow(cachedRows)
+    let cached = pickBestRow(cachedRows)
+    let servedFromPriorYear = false
+
+    if (!cached) {
+      // No data for current emissions_year — check prior year
+      const { data: priorRows } = await supabase
+        .from('emissions_annual')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('year', emissions_year - 1)
+        .limit(10)
+
+      const priorBest = pickBestRow(priorRows)
+      if (priorBest && String(priorBest.total_methodology) !== 'estimated') {
+        // Serve prior year's reported/partially_reported data
+        cached = priorBest
+        servedFromPriorYear = true
+      }
+    }
 
     if (cached) {
-      // Cache HIT — deduct credits
+      // Cache HIT — deduct credits and return
       const { data: deductResult } = await supabase.rpc('deduct_credits', {
         p_user_id: clientId, p_amount: 3, p_request_id: requestId,
       })
@@ -209,29 +225,52 @@ serve(async (req) => {
         return jsonResponse({ status: 'error', reason: 'Insufficient credits.' }, 402)
       }
       if (deductResult?.balance != null) checkLowBalance(supabase, clientId!, deductResult.balance)
+
+      // If serving prior year data, still fire extraction in background
+      // to look for the new year's report (respecting monthly cooldown)
+      if (servedFromPriorYear) {
+        const { data: shouldExtract } = await supabase.rpc('should_attempt_extraction', {
+          p_company_id: companyId, p_year: emissions_year,
+        })
+        if (shouldExtract) {
+          await supabase.rpc('record_extraction_attempt', {
+            p_company_id: companyId, p_year: emissions_year, p_result: 'pending',
+          })
+          fireN8nAsync(domain, authHeader)
+        }
+      }
+
       await finalizeRequest(supabase, requestId, 'succeeded', 200, Date.now() - start)
       return jsonResponse(formatEmissionsResponse(companyName, cached))
     }
 
-    // --- Cache MISS: acquire processing lock + fire n8n ---
+    // --- Cache MISS (no data for current or prior year) ---
+    // Check monthly extraction cooldown before firing n8n
     await supabase.rpc('cleanup_stale_locks')
 
-    const { data: lockResult, error: lockError } = await supabase
-      .from('processing_locks')
-      .insert({
-        company_id: companyId,
-        year: emissions_year,
-        request_id: requestId,
-        locked_by: 'edge_function',
-      })
-      .select('company_id')
+    const { data: shouldExtract } = await supabase.rpc('should_attempt_extraction', {
+      p_company_id: companyId, p_year: emissions_year,
+    })
 
-    // Lock acquired if insert succeeded (no conflict error)
-    const lockAcquired = !lockError && lockResult && lockResult.length > 0
+    if (shouldExtract) {
+      const { data: lockResult, error: lockError } = await supabase
+        .from('processing_locks')
+        .insert({
+          company_id: companyId,
+          year: emissions_year,
+          request_id: requestId,
+          locked_by: 'edge_function',
+        })
+        .select('company_id')
 
-    if (lockAcquired) {
-      // Fire n8n extraction async — only if we got the lock (dedup)
-      fireN8nAsync(domain, authHeader)
+      const lockAcquired = !lockError && lockResult && lockResult.length > 0
+
+      if (lockAcquired) {
+        await supabase.rpc('record_extraction_attempt', {
+          p_company_id: companyId, p_year: emissions_year, p_result: 'pending',
+        })
+        fireN8nAsync(domain, authHeader)
+      }
     }
 
     // --- Call estimation RPC (retry once for newly onboarded companies) ---
@@ -327,11 +366,14 @@ function checkLowBalance(
 
 function pickBestRow(rows: Record<string, unknown>[] | null): Record<string, unknown> | null {
   if (!rows || rows.length === 0) return null
-  // Prefer REPORTED, then partially_reported methodology, then ESTIMATED
+  // Prefer non-outlier REPORTED > partially_reported > ESTIMATED > outlier-flagged REPORTED
   const priority: Record<string, number> = { reported: 0, partially_reported: 1, estimated: 2 }
   rows.sort((a, b) => {
-    const pa = priority[String(a.total_methodology)] ?? 3
-    const pb = priority[String(b.total_methodology)] ?? 3
+    const aOutlier = a.outlier_flag === true
+    const bOutlier = b.outlier_flag === true
+    // Outlier-flagged rows rank below estimated (priority 3)
+    const pa = aOutlier ? 3 : (priority[String(a.total_methodology)] ?? 4)
+    const pb = bOutlier ? 3 : (priority[String(b.total_methodology)] ?? 4)
     return pa - pb
   })
   return rows[0]
