@@ -287,7 +287,7 @@ const Usage = () => {
   const succeededCount = rows.filter(r => r.status === 'succeeded').length
   const failedCount = rows.filter(r => r.status === 'failed' || r.status === 'rejected').length
   const creditsUsed = succeededCount * CREDITS_PER_LOOKUP
-  const dollarValue = (creditBalance / CREDITS_PER_LOOKUP) * (250 / 1800) // approx dollar value based on Growth pack rate
+  const lookupsRemaining = Math.floor(creditBalance / CREDITS_PER_LOOKUP)
 
   const chartData = useMemo(() => groupByBucket(rows, timeRange), [rows, timeRange])
   const maxBucket = Math.max(...chartData.map(d =>
@@ -362,10 +362,10 @@ const Usage = () => {
             ) : (
               <>
                 <div className="text-[48px] font-semibold font-mono text-black tracking-[-0.03em] leading-none">
-                  ${dollarValue.toFixed(2)}
+                  {creditBalance.toLocaleString()}
                 </div>
                 <div className="text-[14px] text-gray-400 mt-2 font-mono">
-                  {creditBalance.toLocaleString()} credits remaining
+                  {lookupsRemaining.toLocaleString()} lookups remaining
                 </div>
               </>
             )}

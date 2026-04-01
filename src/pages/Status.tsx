@@ -100,7 +100,7 @@ const Status = () => {
 
   useEffect(() => {
     fetchStatus()
-    const interval = setInterval(() => fetchStatus(), 60000)
+    const interval = setInterval(() => fetchStatus(), 300000) // 5 minutes
     return () => clearInterval(interval)
   }, [])
 

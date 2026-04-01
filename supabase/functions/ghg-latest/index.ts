@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const N8N_WEBHOOK_URL = 'https://n8n-yp1u.onrender.com/v1/ghg/extract'
 const N8N_ONBOARD_URL = 'https://n8n-yp1u.onrender.com/v1/ghg/onboard-company'
+const N8N_REVENUE_URL = 'https://n8n-yp1u.onrender.com/v1/ghg/revenue-search'
 
 function jsonResponse(body: Record<string, unknown>, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
@@ -197,27 +198,9 @@ serve(async (req) => {
       .limit(10)
 
     let cached = pickBestRow(cachedRows)
-    let servedFromPriorYear = false
-
-    if (!cached) {
-      // No data for current emissions_year — check prior year
-      const { data: priorRows } = await supabase
-        .from('emissions_annual')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('year', emissions_year - 1)
-        .limit(10)
-
-      const priorBest = pickBestRow(priorRows)
-      if (priorBest && String(priorBest.total_methodology) !== 'estimated') {
-        // Serve prior year's reported/partially_reported data
-        cached = priorBest
-        servedFromPriorYear = true
-      }
-    }
 
     if (cached) {
-      // Cache HIT — deduct credits and return
+      // Current year data exists — serve it
       const { data: deductResult } = await supabase.rpc('deduct_credits', {
         p_user_id: clientId, p_amount: 3, p_request_id: requestId,
       })
@@ -226,9 +209,8 @@ serve(async (req) => {
       }
       if (deductResult?.balance != null) checkLowBalance(supabase, clientId!, deductResult.balance)
 
-      // If serving prior year data, still fire extraction in background
-      // to look for the new year's report (respecting monthly cooldown)
-      if (servedFromPriorYear) {
+      // Fire extraction async if we only have estimated data (monthly cooldown)
+      if (String(cached.total_methodology) === 'estimated') {
         const { data: shouldExtract } = await supabase.rpc('should_attempt_extraction', {
           p_company_id: companyId, p_year: emissions_year,
         })
@@ -242,6 +224,110 @@ serve(async (req) => {
 
       await finalizeRequest(supabase, requestId, 'succeeded', 200, Date.now() - start)
       return jsonResponse(formatEmissionsResponse(companyName, cached))
+    }
+
+    // --- No current year data: year rollover scenario ---
+    // Check if we have prior year data (reported or estimated)
+    const { data: priorRows } = await supabase
+      .from('emissions_annual')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('year', emissions_year - 1)
+      .limit(10)
+
+    const hasPriorData = priorRows && priorRows.length > 0
+
+    if (hasPriorData) {
+      // Prior year data exists but no current year — year rollover.
+
+      // Check if we already have revenue for the target year
+      const { data: revenueCheck } = await supabase
+        .from('company_revenue')
+        .select('revenue_usd')
+        .eq('company_id', companyId)
+        .eq('revenue_year', emissions_year)
+        .eq('metric_type', 'REVENUE')
+        .limit(1)
+
+      const hasTargetRevenue = revenueCheck && revenueCheck.length > 0 && revenueCheck[0].revenue_usd > 0
+
+      // If no target year revenue, fetch it synchronously (once per cooldown period)
+      if (!hasTargetRevenue) {
+        const { data: shouldAttempt } = await supabase.rpc('should_attempt_extraction', {
+          p_company_id: companyId, p_year: emissions_year,
+        })
+
+        if (shouldAttempt) {
+          await supabase.rpc('record_extraction_attempt', {
+            p_company_id: companyId, p_year: emissions_year, p_result: 'pending',
+          })
+
+          try {
+            // Synchronous revenue fetch (~8-12s)
+            await fetch(N8N_REVENUE_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers.get('Authorization') ?? '',
+              },
+              body: JSON.stringify({
+                company_id: companyId,
+                company_name: companyName,
+                domain,
+                target_year: emissions_year,
+              }),
+            })
+          } catch (err) {
+            console.error('Synchronous revenue fetch failed:', err)
+          }
+
+          // Fire full extraction (report search) async
+          fireN8nAsync(domain, req.headers.get('Authorization') ?? '')
+        }
+      } else {
+        // Have revenue but no emissions for target year — just fire extraction async (monthly cooldown)
+        const { data: shouldAttempt } = await supabase.rpc('should_attempt_extraction', {
+          p_company_id: companyId, p_year: emissions_year,
+        })
+        if (shouldAttempt) {
+          await supabase.rpc('record_extraction_attempt', {
+            p_company_id: companyId, p_year: emissions_year, p_result: 'pending',
+          })
+          fireN8nAsync(domain, req.headers.get('Authorization') ?? '')
+        }
+      }
+
+      // Now try estimation — will use target year revenue if available (freshly fetched or cached)
+      const { data: estResult } = await supabase.rpc(
+        'estimate_emissions_for_company_year_http',
+        { in_company_id: companyId, in_year: emissions_year },
+      )
+
+      if (estResult?.emissions) {
+        const { data: deductResult } = await supabase.rpc('deduct_credits', {
+          p_user_id: clientId, p_amount: 3, p_request_id: requestId,
+        })
+        if (deductResult && !deductResult.success) {
+          return jsonResponse({ status: 'error', reason: 'Insufficient credits.' }, 402)
+        }
+        if (deductResult?.balance != null) checkLowBalance(supabase, clientId!, deductResult.balance)
+        await finalizeRequest(supabase, requestId, 'succeeded', 200, Date.now() - start)
+        return jsonResponse(formatEmissionsResponse(companyName, estResult.emissions))
+      }
+
+      // Estimation failed (no target year revenue found) — serve prior year data
+      const priorBest = pickBestRow(priorRows)
+      if (priorBest) {
+        const { data: deductResult } = await supabase.rpc('deduct_credits', {
+          p_user_id: clientId, p_amount: 3, p_request_id: requestId,
+        })
+        if (deductResult && !deductResult.success) {
+          return jsonResponse({ status: 'error', reason: 'Insufficient credits.' }, 402)
+        }
+        if (deductResult?.balance != null) checkLowBalance(supabase, clientId!, deductResult.balance)
+        await finalizeRequest(supabase, requestId, 'succeeded', 200, Date.now() - start)
+        return jsonResponse(formatEmissionsResponse(companyName, priorBest))
+      }
     }
 
     // --- Cache MISS (no data for current or prior year) ---
