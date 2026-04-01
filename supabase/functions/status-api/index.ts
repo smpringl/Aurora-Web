@@ -42,9 +42,28 @@ async function pingService(name: string, url: string, timeoutMs = 8000): Promise
   }
 }
 
+// In-memory cache: avoid hitting DB on every request
+let cachedResponse: string | null = null
+let cachedAt = 0
+const CACHE_TTL_MS = 120_000 // 2 minutes
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
+  }
+
+  // Handle /ping sub-path (lightweight, no DB)
+  const url = new URL(req.url)
+  if (url.pathname.endsWith('/ping')) {
+    return json({ status: 'ok', ts: new Date().toISOString() })
+  }
+
+  // Serve from cache if fresh
+  if (cachedResponse && (Date.now() - cachedAt) < CACHE_TTL_MS) {
+    return new Response(cachedResponse, {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -67,34 +86,57 @@ serve(async (req: Request) => {
       pingService('PDF Processor', 'https://aurora-tika-pdf.onrender.com/tika'),
     ])
 
-    // Check Supabase by running a simple query
+    // Check Supabase — lightweight ping via REST API (no Supabase client overhead)
     const dbStart = Date.now()
-    const { error: dbError } = await db.from('companies').select('id').limit(1)
+    let dbError: string | null = null
+    try {
+      const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/sectors?select=id&limit=1`, {
+        headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!dbRes.ok) dbError = `HTTP ${dbRes.status}`
+    } catch (e) {
+      dbError = e instanceof Error ? e.message : 'timeout'
+    }
     const dbLatency = Date.now() - dbStart
     const database: ServiceStatus = {
       name: 'Database',
       status: dbError ? 'down' : dbLatency > 3000 ? 'degraded' : 'operational',
       latency_ms: dbLatency,
-      details: dbError ? dbError.message : undefined,
+      details: dbError ?? undefined,
     }
 
-    // Check if API is responding — look at recent requests
-    // "succeeded" and "failed" (data_not_available) are both healthy responses.
-    // Only "rejected" (auth) or missing http_status (crashes) indicate real problems.
+    // Check if API is responding — use count queries instead of fetching all rows
     const hourAgo = new Date(Date.now() - 3600000).toISOString()
-    const { data: recentRequests } = await db
+    const { count: totalHour } = await db
       .from('api_requests')
-      .select('status, http_status, duration_ms')
+      .select('id', { count: 'exact', head: true })
       .eq('endpoint', '/v1/ghg/latest')
       .gte('received_at', hourAgo)
 
-    const total = (recentRequests || []).length
-    // System errors = requests that got a 500+ HTTP status (actual crashes)
-    const systemErrors = (recentRequests || []).filter(r => r.http_status != null && r.http_status >= 500).length
+    const { count: errorsHour } = await db
+      .from('api_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('endpoint', '/v1/ghg/latest')
+      .gte('received_at', hourAgo)
+      .gte('http_status', 500)
+
+    const total = totalHour ?? 0
+    const systemErrors = errorsHour ?? 0
     const systemErrorRate = total > 0 ? (systemErrors / total) * 100 : 0
 
-    // Average response time from successful requests
-    const durations = (recentRequests || []).filter(r => r.duration_ms != null && r.duration_ms > 0).map(r => r.duration_ms as number)
+    // Average latency from last 50 requests only
+    const { data: recentLatency } = await db
+      .from('api_requests')
+      .select('duration_ms')
+      .eq('endpoint', '/v1/ghg/latest')
+      .gte('received_at', hourAgo)
+      .not('duration_ms', 'is', null)
+      .gt('duration_ms', 0)
+      .order('received_at', { ascending: false })
+      .limit(50)
+
+    const durations = (recentLatency || []).map(r => r.duration_ms as number)
     const avgLatency = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0
 
     const apiStatus: ServiceStatus = {
@@ -120,27 +162,47 @@ serve(async (req: Request) => {
       .order('created_at', { ascending: false })
       .limit(10)
 
-    // Uptime: % of requests that got a response (any HTTP status < 500)
-    // "succeeded" and "failed" (data_not_available) both count as UP
+    // Uptime: use count queries — never fetch all 30 days of rows
     const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString()
-    const { data: monthRequests } = await db
+    const { count: monthTotal } = await db
       .from('api_requests')
-      .select('http_status')
+      .select('id', { count: 'exact', head: true })
       .eq('endpoint', '/v1/ghg/latest')
       .gte('received_at', monthAgo)
 
-    const monthTotal = (monthRequests || []).length
-    const monthUp = (monthRequests || []).filter(r => r.http_status == null || r.http_status < 500).length
-    const uptime30d = monthTotal > 0 ? ((monthUp / monthTotal) * 100).toFixed(2) : '100.00'
+    const { count: monthErrors } = await db
+      .from('api_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('endpoint', '/v1/ghg/latest')
+      .gte('received_at', monthAgo)
+      .gte('http_status', 500)
 
-    return json({
+    const mt = monthTotal ?? 0
+    const me = monthErrors ?? 0
+    const monthUp = mt - me
+    const uptime30d = mt > 0 ? ((monthUp / mt) * 100).toFixed(2) : '100.00'
+
+    const result = {
       overall,
       services: publicServices,
       uptime_30d: parseFloat(uptime30d),
       incidents: incidents || [],
       checked_at: new Date().toISOString(),
-    })
+    }
+
+    // Cache the response
+    cachedResponse = JSON.stringify(result)
+    cachedAt = Date.now()
+
+    return json(result)
   } catch (err) {
+    // On error, serve stale cache if available
+    if (cachedResponse) {
+      return new Response(cachedResponse, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
     return json({ error: 'Status check failed', details: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

@@ -62,8 +62,11 @@ const Pricing = () => {
                 </li>
               </ul>
 
-              <Button variant="outline" className="w-full border-gray-300 text-gray-600 hover:text-black hover:border-black font-medium rounded-lg bg-white" asChild>
-                <Link to={ctaLink}>Get Started</Link>
+              <Button className="w-full bg-black text-white hover:bg-gray-800 font-medium rounded-lg" asChild>
+                <Link to={ctaLink}>
+                  Get Started
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Link>
               </Button>
             </div>
 
@@ -109,11 +112,10 @@ const Pricing = () => {
                 </li>
               </ul>
 
-              <Button className="w-full bg-black text-white hover:bg-gray-800 font-medium rounded-lg" asChild>
-                <Link to={ctaLink}>
-                  Get Started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Link>
+              <Button variant="outline" className="w-full border-gray-300 text-gray-600 hover:text-black hover:border-black font-medium rounded-lg bg-white" asChild>
+                <a href="mailto:hello@auroracarbon.com?subject=Growth%20Pack%20Access%20Request">
+                  Request Access
+                </a>
               </Button>
             </div>
 
@@ -156,9 +158,8 @@ const Pricing = () => {
               </ul>
 
               <Button variant="outline" className="w-full border-gray-300 text-gray-600 hover:text-black hover:border-black font-medium rounded-lg bg-white" asChild>
-                <a href="mailto:sam@auroracarbon.com">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Contact Us
+                <a href="mailto:hello@auroracarbon.com?subject=Enterprise%20Access%20Request">
+                  Request Access
                 </a>
               </Button>
             </div>

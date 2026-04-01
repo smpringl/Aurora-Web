@@ -261,7 +261,7 @@ const Playground = () => {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data?.message || data?.error || `HTTP ${res.status}`)
+        setError(data?.reason || data?.message || data?.error || `HTTP ${res.status}`)
       } else {
         setResponse(data)
       }
@@ -429,9 +429,18 @@ const Playground = () => {
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 mb-2 inline-block">
               ERROR
             </span>
-            <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 overflow-x-auto text-gray-600 mt-2">
-              {error}
-            </pre>
+            {error.toLowerCase().includes('insufficient credit') ? (
+              <div className="bg-gray-50 rounded-lg p-4 mt-2">
+                <p className="text-[13px] text-gray-600">You don't have enough credits to run a lookup.</p>
+                <a href="#billing" className="inline-block mt-2 text-[13px] font-medium text-black underline underline-offset-2 hover:text-gray-600">
+                  Add credits in Billing &rarr;
+                </a>
+              </div>
+            ) : (
+              <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 overflow-x-auto text-gray-600 mt-2">
+                {error}
+              </pre>
+            )}
           </div>
         )}
       </div>

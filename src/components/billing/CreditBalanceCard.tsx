@@ -6,11 +6,9 @@ interface CreditBalanceCardProps {
 }
 
 const CREDITS_PER_LOOKUP = 3
-const GROWTH_RATE = 250 / 1800 // dollars per lookup at Growth pack rate
 
 const CreditBalanceCard = ({ balance, loading }: CreditBalanceCardProps) => {
   const lookups = Math.floor(balance / CREDITS_PER_LOOKUP)
-  const dollarValue = lookups * GROWTH_RATE
 
   return (
     <div className="border border-gray-200 rounded-xl bg-white p-6">
@@ -30,10 +28,10 @@ const CreditBalanceCard = ({ balance, loading }: CreditBalanceCardProps) => {
       ) : (
         <>
           <div className="text-[48px] font-semibold font-mono text-black tracking-[-0.03em] leading-none">
-            ${dollarValue.toFixed(0)}
+            {balance.toLocaleString()}
           </div>
           <div className="text-[14px] text-gray-400 mt-2 font-mono">
-            {balance.toLocaleString()} credits remaining &middot; {lookups.toLocaleString()} lookups
+            {lookups.toLocaleString()} lookups remaining
           </div>
         </>
       )}

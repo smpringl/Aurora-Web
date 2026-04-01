@@ -777,6 +777,49 @@ serve(async (req: Request) => {
         return json({ p50, p95, count })
       }
 
+      // ── Data Health ──
+      case 'data-health': {
+        const { data: health } = await db.rpc('get_pipeline_health')
+        const { data: sectors } = await db.rpc('get_sector_health')
+        const { data: outlierRows } = await db
+          .from('emissions_annual')
+          .select('id, company_id, year, total_emissions_tco2e, scope1_emissions_tco2e, scope2_emissions_tco2e, scope3_emissions_tco2e, outlier_reason, outlier_flag, source_url, data_source, companies!inner(name, sector, revenue_usd)')
+          .eq('outlier_flag', true)
+          .order('total_emissions_tco2e', { ascending: false })
+          .limit(100)
+        // Fetch domains separately to avoid join issues
+        const companyIds = [...new Set((outlierRows || []).map((o: Record<string, unknown>) => o.company_id))]
+        const { data: domainRows } = companyIds.length > 0
+          ? await db.from('company_domains').select('company_id, domain').in('company_id', companyIds)
+          : { data: [] }
+        const domainMap: Record<string, string> = {}
+        for (const d of (domainRows || [])) {
+          if (!domainMap[d.company_id as string]) domainMap[d.company_id as string] = d.domain as string
+        }
+        const outliers = (outlierRows || []).map((o: Record<string, unknown>) => ({
+          ...o,
+          domain: domainMap[o.company_id as string] || null,
+        }))
+        return json({ health: health?.[0] ?? null, sectors: sectors ?? [], outliers })
+      }
+
+      case 'update-emissions': {
+        const { emission_id, updates } = body
+        if (!emission_id || !updates) return json({ error: 'emission_id and updates required' }, 400)
+        const allowed = ['total_emissions_tco2e', 'scope1_emissions_tco2e', 'scope2_emissions_tco2e', 'scope3_emissions_tco2e', 'outlier_flag', 'outlier_reason']
+        const clean: Record<string, unknown> = {}
+        for (const key of allowed) {
+          if (key in updates) clean[key] = updates[key]
+        }
+        if (Object.keys(clean).length === 0) return json({ error: 'No valid fields to update' }, 400)
+        const { error: updateErr } = await db
+          .from('emissions_annual')
+          .update(clean)
+          .eq('id', emission_id)
+        if (updateErr) return json({ error: updateErr.message }, 500)
+        return json({ ok: true })
+      }
+
       default:
         return json({ error: `Unknown action: ${action}` }, 400)
     }

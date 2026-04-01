@@ -165,7 +165,7 @@ const Overview = () => {
   // Credit balance
   const [creditBalance, setCreditBalance] = useState(0)
   const [balanceLoading, setBalanceLoading] = useState(true)
-  const dollarValue = (creditBalance / CREDITS_PER_LOOKUP) * (250 / 1800)
+  const lookupsRemaining = Math.floor(creditBalance / CREDITS_PER_LOOKUP)
 
   const fetchBalance = async (showLoading = true) => {
     if (!userId) return
@@ -323,7 +323,7 @@ const Overview = () => {
 
       const data = await res.json()
       if (!res.ok) {
-        setLookupError(data?.message || data?.error || `HTTP ${res.status}`)
+        setLookupError(data?.reason || data?.message || data?.error || `HTTP ${res.status}`)
       } else {
         setLookupResponse(data)
       }
@@ -399,7 +399,7 @@ const Overview = () => {
               {creditBalance.toLocaleString()}
             </div>
             <div className="text-[14px] text-gray-400 mt-2 font-mono">
-              ${dollarValue.toFixed(2)} remaining
+              {lookupsRemaining.toLocaleString()} lookups remaining
             </div>
             <Button
               variant="outline"
@@ -583,7 +583,16 @@ const Overview = () => {
               <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
               <span className="text-[12px] font-bold uppercase text-black">Error</span>
             </div>
-            <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 text-gray-600">{lookupError}</pre>
+            {lookupError.toLowerCase().includes('insufficient credit') ? (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-[13px] text-gray-600">You don't have enough credits to run a lookup.</p>
+                <a href="#billing" className="inline-block mt-2 text-[13px] font-medium text-black underline underline-offset-2 hover:text-gray-600">
+                  Add credits in Billing &rarr;
+                </a>
+              </div>
+            ) : (
+              <pre className="text-[13px] font-mono bg-gray-50 rounded-lg p-4 text-gray-600">{lookupError}</pre>
+            )}
           </div>
         )}
 
