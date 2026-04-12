@@ -659,7 +659,7 @@ serve(async (req: Request) => {
             age_minutes: Math.round((Date.now() - new Date(l.locked_at).getTime()) / 60000),
           })),
           manual_queue: (queue || [])
-            .filter(q => q.status === 'pending' || q.status === 'blocked_download' || q.status === 'skipped')
+            .filter(q => q.status === 'pending' || q.status === 'blocked_download' || q.status === 'skipped' || q.status === 'failed')
             .map(q => ({
               ...q,
               company_name: (q.companies as unknown as { name: string })?.name || q.company_id,
