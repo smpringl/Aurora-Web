@@ -600,13 +600,14 @@ serve(async (req: Request) => {
           .order('updated_at', { ascending: false })
           .limit(50)
 
-        // 4. Failed extractions — estimated rows with recent activity (creation OR confirmation).
-        // Use updated_at so admin-confirmed estimations show up even if the row itself is old.
+        // 4. Failed extractions — estimated rows that are either newly created
+        // or admin-confirmed in the last 7 days. Excludes routine recalculations
+        // (estimation RPC bumps updated_at on every API request for estimated rows).
         const { data: failedExtractions } = await db
           .from('emissions_annual')
           .select('company_id, year, emissions_source, data_source, estimation_confirmed_at, created_at, updated_at')
           .eq('emissions_source', 'ESTIMATED')
-          .gte('updated_at', weekAgo)
+          .or(`created_at.gte.${weekAgo},estimation_confirmed_at.gte.${weekAgo}`)
           .order('updated_at', { ascending: false })
           .limit(50)
 
