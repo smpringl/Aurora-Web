@@ -600,14 +600,15 @@ serve(async (req: Request) => {
           .order('updated_at', { ascending: false })
           .limit(50)
 
-        // 4. Failed extractions — companies that were queried recently but still only have estimated data
+        // 4. Failed extractions — estimated rows with recent activity (creation OR confirmation).
+        // Use updated_at so admin-confirmed estimations show up even if the row itself is old.
         const { data: failedExtractions } = await db
           .from('emissions_annual')
-          .select('company_id, year, emissions_source, data_source, created_at, updated_at')
+          .select('company_id, year, emissions_source, data_source, estimation_confirmed_at, created_at, updated_at')
           .eq('emissions_source', 'ESTIMATED')
-          .gte('created_at', weekAgo)
-          .order('created_at', { ascending: false })
-          .limit(30)
+          .gte('updated_at', weekAgo)
+          .order('updated_at', { ascending: false })
+          .limit(50)
 
         // 5. Outlier-flagged emissions
         const { data: outliers } = await db
