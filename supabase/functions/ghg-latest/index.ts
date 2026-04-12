@@ -297,26 +297,33 @@ serve(async (req) => {
         }
       }
 
-      // Now try estimation — will use target year revenue if available (freshly fetched or cached)
-      const { data: estResult } = await supabase.rpc(
-        'estimate_emissions_for_company_year_http',
-        { in_company_id: companyId, in_year: emissions_year },
-      )
+      // Check if prior year has reported data
+      const priorBest = pickBestRow(priorRows)
+      const priorIsReported = priorBest && String(priorBest.total_methodology) !== 'estimated'
 
-      if (estResult?.emissions) {
-        const { data: deductResult } = await supabase.rpc('deduct_credits', {
-          p_user_id: clientId, p_amount: 3, p_request_id: requestId,
-        })
-        if (deductResult && !deductResult.success) {
-          return jsonResponse({ status: 'error', reason: 'Insufficient credits.' }, 402)
+      // Only estimate for the new year if prior year was estimated (no reported data exists).
+      // If prior year has reported data, serve it instead — estimation would be less accurate
+      // than the company's own reported figures from the prior year.
+      if (!priorIsReported) {
+        const { data: estResult } = await supabase.rpc(
+          'estimate_emissions_for_company_year_http',
+          { in_company_id: companyId, in_year: emissions_year },
+        )
+
+        if (estResult?.emissions) {
+          const { data: deductResult } = await supabase.rpc('deduct_credits', {
+            p_user_id: clientId, p_amount: 3, p_request_id: requestId,
+          })
+          if (deductResult && !deductResult.success) {
+            return jsonResponse({ status: 'error', reason: 'Insufficient credits.' }, 402)
+          }
+          if (deductResult?.balance != null) checkLowBalance(supabase, clientId!, deductResult.balance)
+          await finalizeRequest(supabase, requestId, 'succeeded', 200, Date.now() - start)
+          return jsonResponse(formatEmissionsResponse(companyName, estResult.emissions))
         }
-        if (deductResult?.balance != null) checkLowBalance(supabase, clientId!, deductResult.balance)
-        await finalizeRequest(supabase, requestId, 'succeeded', 200, Date.now() - start)
-        return jsonResponse(formatEmissionsResponse(companyName, estResult.emissions))
       }
 
-      // Estimation failed (no target year revenue found) — serve prior year data
-      const priorBest = pickBestRow(priorRows)
+      // Serve prior year data (reported or estimated fallback)
       if (priorBest) {
         const { data: deductResult } = await supabase.rpc('deduct_credits', {
           p_user_id: clientId, p_amount: 3, p_request_id: requestId,

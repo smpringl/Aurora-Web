@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
 import DashboardLayout from '@/components/DashboardLayout'
 import Overview from '@/components/Overview'
 import Playground from '@/components/Playground'
@@ -36,11 +37,29 @@ const Dashboard = () => {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
+  const onboardingChecked = useRef(false)
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth')
     }
   }, [user, loading, navigate])
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (!user || onboardingChecked.current) return
+    onboardingChecked.current = true
+    supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data && !data.onboarding_completed) {
+          navigate('/onboarding')
+        }
+      })
+  }, [user, navigate])
 
   if (loading) {
     return (

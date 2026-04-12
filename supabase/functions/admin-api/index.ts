@@ -377,6 +377,203 @@ serve(async (req: Request) => {
         return json({ success: res.ok, status: res.status })
       }
 
+      case 'upload-report-pdf': {
+        // Inputs: queue_id, storage_path (browser-uploaded), emissions_year
+        const { queue_id, storage_path: providedPath, emissions_year } = body
+        if (!queue_id || !providedPath || !emissions_year) {
+          return json({ error: 'queue_id, storage_path, emissions_year required' }, 400)
+        }
+
+        const { data: queueRow, error: qErr } = await db
+          .from('manual_report_queue')
+          .select('id, company_id, upload_attempts')
+          .eq('id', queue_id)
+          .single()
+        if (qErr || !queueRow) return json({ error: 'Queue item not found' }, 404)
+
+        const [{ data: domainRow }, { data: revenueRow }] = await Promise.all([
+          db.from('company_domains').select('domain').eq('company_id', queueRow.company_id).limit(1).maybeSingle(),
+          db.from('company_revenue').select('revenue_usd').eq('company_id', queueRow.company_id).eq('revenue_year', Number(emissions_year)).maybeSingle(),
+        ])
+
+        let revenue_usd: number | null = revenueRow?.revenue_usd ?? null
+        if (revenue_usd == null) {
+          const { data: anyRev } = await db
+            .from('company_revenue')
+            .select('revenue_usd')
+            .eq('company_id', queueRow.company_id)
+            .order('revenue_year', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          revenue_usd = anyRev?.revenue_usd ?? null
+        }
+
+        // Verify the storage object exists (browser uploaded it)
+        const expectedPrefix = `${queueRow.company_id}/`
+        if (!providedPath.startsWith(expectedPrefix) || !providedPath.endsWith('.pdf')) {
+          return json({ error: 'Invalid storage_path for this queue item' }, 400)
+        }
+
+        const { data: signed, error: signedErr } = await db.storage
+          .from('report-pdfs')
+          .createSignedUrl(providedPath, 1800)
+        if (signedErr || !signed?.signedUrl) {
+          return json({ error: `Failed to create signed URL: ${signedErr?.message || 'unknown'}` }, 500)
+        }
+        const storagePath = providedPath
+
+        const attempts = (queueRow.upload_attempts || 0) + 1
+        const nowIso = new Date().toISOString()
+        await db.from('manual_report_queue').update({
+          status: 'processing',
+          storage_path: storagePath,
+          uploaded_by: userId,
+          processing_started_at: nowIso,
+          upload_attempts: attempts,
+          failure_reason: null,
+          updated_at: nowIso,
+        }).eq('id', queue_id)
+
+        // Kick off n8n webhook — await briefly so the request lands,
+        // then abort so admin-api returns fast (n8n continues independently)
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 5000)
+        try {
+          await fetch('https://n8n-yp1u.onrender.com/v1/ghg/extract-from-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: ctrl.signal,
+            body: JSON.stringify({
+              upload_id: queue_id,
+              pdf_url: signed.signedUrl,
+              company_id: queueRow.company_id,
+              emissions_year: Number(emissions_year),
+              domain: domainRow?.domain ?? null,
+              revenue_usd,
+              upload_attempts: attempts,
+            }),
+          })
+        } catch (err) {
+          const name = (err as Error)?.name
+          if (name !== 'AbortError') {
+            console.error('n8n extract-from-pdf fire failed:', err)
+          }
+        } finally {
+          clearTimeout(timer)
+        }
+
+        return json({ success: true, queue_id, storage_path: storagePath, processing_started_at: nowIso })
+      }
+
+      case 'get-estimation-detail': {
+        const { company_id, year } = body
+        if (!company_id || !year) return json({ error: 'company_id and year required' }, 400)
+
+        const { data: emissionsRow } = await db
+          .from('emissions_annual')
+          .select('*')
+          .eq('company_id', company_id)
+          .eq('year', year)
+          .maybeSingle()
+        if (!emissionsRow) return json({ error: 'No emissions row found for company+year' }, 404)
+
+        const { data: company } = await db
+          .from('companies')
+          .select('id, name, sector_id, company_type')
+          .eq('id', company_id)
+          .maybeSingle()
+        if (!company) return json({ error: 'Company not found' }, 404)
+
+        const isFinance = company.sector_id === 13
+        let peersQuery = db
+          .from('companies')
+          .select('id, name, sector_id, company_type')
+          .eq('sector_id', company.sector_id)
+          .neq('id', company_id)
+        if (isFinance && company.company_type) {
+          peersQuery = peersQuery.eq('company_type', company.company_type)
+        }
+        const { data: peerCompanies } = await peersQuery.limit(500)
+        const peerIds = (peerCompanies || []).map(p => p.id)
+
+        const { data: peerEmissions } = peerIds.length > 0 ? await db
+          .from('emissions_annual')
+          .select('company_id, year, total_emissions_tco2e, scope1_emissions_tco2e, scope2_emissions_tco2e, scope3_emissions_tco2e, total_methodology, revenue_usd, emissions_intensity_per_revenue, outlier_flag')
+          .in('company_id', peerIds)
+          .in('total_methodology', ['reported', 'partially_reported'])
+          .eq('year', Number(year))
+          .or('outlier_flag.is.null,outlier_flag.eq.false')
+          : { data: [] as Array<Record<string, unknown>> }
+
+        const subjectRevenue = Number(emissionsRow.revenue_usd) || 0
+        const peerMap = Object.fromEntries((peerCompanies || []).map(p => [p.id, p]))
+
+        const peers = (peerEmissions || [])
+          .map(p => {
+            const info = peerMap[p.company_id as string] as { name?: string; company_type?: string } | undefined
+            const peerRev = Number(p.revenue_usd) || 0
+            const dist = subjectRevenue > 0 && peerRev > 0
+              ? Math.abs(Math.log(peerRev) - Math.log(subjectRevenue))
+              : 999
+            return {
+              company_id: p.company_id,
+              name: info?.name || 'Unknown',
+              company_type: info?.company_type || null,
+              year: p.year,
+              revenue_usd: p.revenue_usd,
+              total_emissions_tco2e: p.total_emissions_tco2e,
+              scope1_emissions_tco2e: p.scope1_emissions_tco2e,
+              scope2_emissions_tco2e: p.scope2_emissions_tco2e,
+              scope3_emissions_tco2e: p.scope3_emissions_tco2e,
+              methodology: p.total_methodology,
+              intensity: p.emissions_intensity_per_revenue,
+              _dist: dist,
+            }
+          })
+          .sort((a, b) => a._dist - b._dist)
+          .slice(0, 5)
+          .map(({ _dist, ...rest }) => rest)
+
+        return json({
+          emissions: emissionsRow,
+          company: { ...company, revenue_usd: subjectRevenue },
+          peers,
+          peer_count: peerEmissions?.length || 0,
+          is_asset_mgmt: company.company_type === 'asset_mgmt',
+        })
+      }
+
+      case 'confirm-estimation': {
+        const { company_id, year } = body
+        if (!company_id || !year) return json({ error: 'company_id and year required' }, 400)
+
+        const nowIso = new Date().toISOString()
+        const { error } = await db
+          .from('emissions_annual')
+          .update({
+            estimation_confirmed_at: nowIso,
+            estimation_confirmed_by: userId,
+            updated_at: nowIso,
+          })
+          .eq('company_id', company_id)
+          .eq('year', Number(year))
+        if (error) return json({ error: error.message }, 500)
+
+        await db
+          .from('manual_report_queue')
+          .update({
+            status: 'completed',
+            processed_at: nowIso,
+            updated_at: nowIso,
+            failure_reason: 'Resolved via estimation fallback',
+          })
+          .eq('company_id', company_id)
+          .eq('report_year', Number(year))
+          .neq('status', 'completed')
+
+        return json({ success: true })
+      }
+
       // ── Extraction Pipeline Overview ──
       case 'extraction-overview': {
         // 1. Currently processing (locked)
@@ -385,12 +582,13 @@ serve(async (req: Request) => {
           .select('company_id, year, locked_at, locked_by, request_id')
           .order('locked_at', { ascending: false })
 
-        // 2. Manual report queue
+        // 2. Manual report queue (only non-completed items)
         const { data: queue } = await db
           .from('manual_report_queue')
-          .select('id, company_id, report_year, report_url, status, needs_report_search, created_at, updated_at, companies(name)')
+          .select('id, company_id, report_year, report_url, status, needs_report_search, storage_path, failure_reason, uploaded_by, processing_started_at, processed_at, upload_attempts, candidates, candidate_index, created_at, updated_at, companies(name)')
+          .neq('status', 'completed')
           .order('created_at', { ascending: false })
-          .limit(100)
+          .limit(500)
 
         // 3. Recent extractions — only rows from actual n8n extraction (not edge function estimation)
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
@@ -460,11 +658,27 @@ serve(async (req: Request) => {
             domain: domainMap[l.company_id] || null,
             age_minutes: Math.round((Date.now() - new Date(l.locked_at).getTime()) / 60000),
           })),
-          manual_queue: (queue || []).map(q => ({
-            ...q,
-            company_name: (q.companies as unknown as { name: string })?.name || q.company_id,
-            domain: domainMap[q.company_id] || null,
-          })),
+          manual_queue: (queue || [])
+            .filter(q => q.status === 'pending' || q.status === 'blocked_download' || q.status === 'skipped')
+            .map(q => ({
+              ...q,
+              company_name: (q.companies as unknown as { name: string })?.name || q.company_id,
+              domain: domainMap[q.company_id] || null,
+            })),
+          processing_uploads: (queue || [])
+            .filter(q => q.status === 'processing')
+            .map(q => ({
+              ...q,
+              company_name: (q.companies as unknown as { name: string })?.name || q.company_id,
+              domain: domainMap[q.company_id] || null,
+            })),
+          failed_uploads: (queue || [])
+            .filter(q => q.status === 'failed')
+            .map(q => ({
+              ...q,
+              company_name: (q.companies as unknown as { name: string })?.name || q.company_id,
+              domain: domainMap[q.company_id] || null,
+            })),
           recent_results: (recentEmissions || []).map(e => ({
             ...e,
             company_name: nameMap[e.company_id] || e.company_id,
@@ -693,22 +907,23 @@ serve(async (req: Request) => {
 
       case 'systems-error-rates': {
         const since = new Date(Date.now() - 24 * 3600000).toISOString()
+        // Fetch only status + timestamp, limited to 500 most recent
         const { data: rows } = await db
           .from('api_requests')
           .select('status, received_at')
           .eq('endpoint', '/v1/ghg/latest')
           .gte('received_at', since)
+          .order('received_at', { ascending: false })
+          .limit(500)
 
-        // Group by hour
         const bucketMap: Record<string, { total: number; failed: number }> = {}
         for (const r of rows || []) {
-          const hour = r.received_at.substring(0, 13) // YYYY-MM-DDTHH
+          const hour = r.received_at.substring(0, 13)
           if (!bucketMap[hour]) bucketMap[hour] = { total: 0, failed: 0 }
           bucketMap[hour].total++
           if (r.status === 'failed' || r.status === 'rejected') bucketMap[hour].failed++
         }
 
-        // Fill missing hours
         const buckets = []
         const now = new Date()
         for (let i = 23; i >= 0; i--) {
@@ -763,8 +978,10 @@ serve(async (req: Request) => {
           .select('duration_ms')
           .eq('endpoint', '/v1/ghg/latest')
           .not('duration_ms', 'is', null)
+          .gt('duration_ms', 0)
           .gte('received_at', since)
           .order('duration_ms', { ascending: true })
+          .limit(200)
 
         const durations = (rows || []).map((r: { duration_ms: number }) => r.duration_ms).filter((d: number) => d > 0)
         const count = durations.length

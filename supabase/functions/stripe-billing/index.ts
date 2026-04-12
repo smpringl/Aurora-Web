@@ -18,8 +18,7 @@ function json(body: Record<string, unknown>, status = 200) {
 
 // Price ID → credits mapping
 const PRICE_CREDITS: Record<string, { credits: number; pack: string }> = {
-  'price_1TDlfXKGTy4BfEAsATcrEiJo': { credits: 120, pack: 'Starter' },
-  'price_1TDlfZKGTy4BfEAsDmFlTS2u': { credits: 5400, pack: 'Growth' },
+  'price_1TJraCKGTy4BfEAsHYspnkGT': { credits: 120, pack: 'Starter' },
 }
 
 serve(async (req) => {

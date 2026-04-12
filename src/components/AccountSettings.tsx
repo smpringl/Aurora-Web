@@ -20,8 +20,13 @@ const AccountSettings = () => {
       return
     }
 
-    if (newPassword.length < 6) {
-      showError('Password must be at least 6 characters')
+    if (newPassword.length < 8) {
+      showError('Password must be at least 8 characters')
+      return
+    }
+
+    if (!/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      showError('Password must include uppercase, lowercase, and a number')
       return
     }
 

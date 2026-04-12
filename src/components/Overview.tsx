@@ -405,10 +405,10 @@ const Overview = () => {
               variant="outline"
               size="sm"
               className="mt-4 rounded-full border-gray-200"
-              onClick={fetchBalance}
+              onClick={() => { window.location.hash = 'billing' }}
             >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
               Reload Balance
+              <ArrowUpRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </div>
 

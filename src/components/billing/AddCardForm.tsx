@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Loader2, AlertCircle } from 'lucide-react'
 
-const STRIPE_PK = 'pk_test_51LiPMBKGTy4BfEAsmMC56JWFtmQPbLjhAXtcDfZVD1j2XuK3uXlpuaa30ylm0KHcn9MX3nnfKI8oIpBOVBBTEker00oGZlZw5M'
+const STRIPE_PK = 'pk_live_51LiPMBKGTy4BfEAsMccRJ3G6ghpMgOSwnefIoZ1HComcjOedbxlj96OYZS5uq98XvpNAwW5SDyIgzVJw4yZEcYdr00joo23oDC'
 const SUPABASE_URL = 'https://kfuuqxmaihlwhzfibhvj.supabase.co'
 
 const stripePromise = loadStripe(STRIPE_PK)

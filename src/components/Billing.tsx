@@ -138,6 +138,11 @@ const Billing = () => {
         <CreditBalanceCard balance={creditBalance} loading={balanceLoading} />
       </div>
 
+      {/* Buy Credits */}
+      <div className="mb-8">
+        <PurchaseCreditsPanel cards={cards} balance={creditBalance} onPurchaseComplete={handlePurchaseComplete} onCardsChanged={fetchCards} />
+      </div>
+
       {/* Payment Methods */}
       <div className="mb-8">
         {showAddCard ? (
@@ -162,11 +167,6 @@ const Billing = () => {
             onAddCard={() => setShowAddCard(true)}
           />
         )}
-      </div>
-
-      {/* Buy Credits */}
-      <div className="mb-8">
-        <PurchaseCreditsPanel cards={cards} onPurchaseComplete={handlePurchaseComplete} />
       </div>
 
       {/* Invoice History */}
